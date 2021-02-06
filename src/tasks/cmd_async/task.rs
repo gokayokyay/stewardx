@@ -6,7 +6,7 @@ use std::process::Stdio;
 use uuid::Uuid;
 use tokio_stream::wrappers::LinesStream;
 
-use crate::{tasks::TaskError, traits::{BoxedStream, Executable, FromJson}};
+use crate::{models::TaskError, traits::{BoxedStream, Executable, FromJson}};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CmdTask {

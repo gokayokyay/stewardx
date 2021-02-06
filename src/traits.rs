@@ -1,10 +1,12 @@
 use std::fmt::Debug;
-use super::types::BoxedStream;
+use crate::models::TaskError;
+
+pub use super::types::BoxedStream;
 use async_trait::async_trait;
 
 #[async_trait]
 pub trait Executable: Debug + ToString {
-    async fn exec(&self) -> Result<BoxedStream, ()>;
+    async fn exec(&self) -> Result<BoxedStream, TaskError>;
     fn get_id(&self) -> uuid::Uuid;
     fn get_type(&self) -> String;
 }

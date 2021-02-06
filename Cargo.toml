@@ -11,9 +11,12 @@ tokio = { version = "1.1.0", features = ["full"] }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 async-trait = "0.1.42"
 futures = "0.3.12"
-sqlx = { version = "0.4", features = ["runtime-tokio-rustls", "postgres"] }
+sqlx = { version = "0.5.1", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
 chrono = { version = "0.4.19", features = ["serde"] }
 serde = { version = "1.0.123", features = ["derive"] } 
+serde_json = "1.0.61"
 tokio-stream = { version = "0.1.2", features = ["io-util"] }
 tracing = "0.1.22"
 tracing-futures = "0.2.4"
+cron = "0.7.0"
+env_logger = "0.8.2"
