@@ -146,6 +146,22 @@ impl DBManager {
             .fetch_one(&mut conn).await;
         row
     }
+    #[instrument(
+        name = "Deleting task.",
+        skip(self),
+        fields(
+            task_id = %id,
+        )
+    )]
+    pub async fn delete_task(&self, id: Uuid) -> Result<TaskModel, sqlx::Error> {
+        let mut conn = self.pool.acquire().await.unwrap();
+        let row = sqlx::query_as!(TaskModel,
+            "DELETE FROM steward_tasks WHERE id = $1 RETURNING *",
+            id
+            )
+            .fetch_one(&mut conn).await;
+        row
+    }
 }
 
 impl DBManager {
@@ -176,6 +192,10 @@ impl DBManager {
                 }
                 DBMessage::UPTADE_TASK { task, resp } => {
                     let task = self.update_task(task).await;
+                    resp.send(task);
+                }
+                DBMessage::DELETE_TASK { id, resp } => {
+                    let task = self.delete_task(id).await;
                     resp.send(task);
                 }
             };

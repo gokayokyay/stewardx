@@ -29,6 +29,10 @@ pub enum DBMessage {
     UPTADE_TASK {
         task: TaskModel,
         resp: DBMessageResponse<TaskModel>
+    },
+    DELETE_TASK {
+        id: Uuid,
+        resp: DBMessageResponse<TaskModel>
     }
 }
 
@@ -41,6 +45,7 @@ impl DBMessage {
             DBMessage::UPDATE_NEXT_EXECUTION { .. } => { return "UPDATE_NEXT_EXECUTION" }
             DBMessage::CREATE_ERROR { .. } => { return "CREATE_ERROR" }
             DBMessage::UPTADE_TASK { .. } => { return "UPDATE_TASK" }
+            DBMessage::DELETE_TASK { .. } => { return "DELETE_TASK" }
         }
     }
 }

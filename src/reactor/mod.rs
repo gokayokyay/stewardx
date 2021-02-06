@@ -41,8 +41,8 @@ impl Reactor {
             for task in tasks.next() {
                 if let Some(task) = task {
                     let id = task.get_id();
-                    println!("{}", id);
-                    println!("{:?}", task_models);
+                    // println!("{}", id);
+                    // println!("{:?}", task_models);
                     let index = search_iter.position(|t| t.id == id);
                     let task_model = task_models[index.unwrap()].clone();
                     task_rxs.push((
