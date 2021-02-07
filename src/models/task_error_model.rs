@@ -11,6 +11,12 @@ pub struct TaskError {
     pub error_message: String,
 }
 
+impl ToString for TaskError {
+    fn to_string(&self) -> String {
+        format!("TaskError for task: {}. Error type: {}, error message: {}", self.id, self.error_type, self.error_message)
+    }
+}
+
 impl TaskError {
     pub fn new_raw(
         id: Uuid,

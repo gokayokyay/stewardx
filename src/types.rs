@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::{db::DBMessage, executor::ExecutorMessage, traits::Executable};
+use crate::{db::DBMessage, executor::ExecutorMessage, models::OutputModel, traits::Executable};
 use futures::Stream;
 use uuid::Uuid;
 
@@ -12,7 +12,7 @@ pub type ExecutableTask = dyn Executable + Send + Sync;
 pub type BoxedTask = Box<ExecutableTask>;
 pub type DBSender = tokio::sync::mpsc::Sender<DBMessage>;
 pub type ExecutorSender = tokio::sync::mpsc::Sender<ExecutorMessage>;
-pub type OutputSender = tokio::sync::broadcast::Sender<(Uuid, String)>;
+pub type OutputSender = tokio::sync::broadcast::Sender<OutputModel>;
 // pub type BoxedTaskQueue = Arc<Mutex<VecDeque<BoxedTask>>>;
 
 #[macro_export]

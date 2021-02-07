@@ -1,5 +1,5 @@
 use executor::Executor;
-use models::TaskModel;
+use models::{OutputModel, TaskModel};
 use reactor::Reactor;
 use std::str::FromStr;
 use tasks::CmdTask;
@@ -33,7 +33,7 @@ async fn main() {
         .unwrap();
     let (db_tx, db_rx) = tokio::sync::mpsc::channel(32);
     let (ex_tx, ex_rx) = tokio::sync::mpsc::channel(32);
-    let (o_tx, mut o_rx) = tokio::sync::broadcast::channel::<(uuid::Uuid, String)>(128);
+    let (o_tx, mut o_rx) = tokio::sync::broadcast::channel::<OutputModel>(128);
 
     tokio::spawn(async {
         let mut db_manager = db::DBManager::new(pool, db_rx);
@@ -46,7 +46,7 @@ async fn main() {
 
     tokio::spawn(async move {
         while let Ok(output) = o_rx.recv().await {
-            println!("{} - {}", output.0, output.1);
+            println!("{:?}", output);
         }
     });
 

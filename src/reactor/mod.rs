@@ -3,15 +3,7 @@ use futures::StreamExt;
 use tokio::sync;
 use tracing::{info, warn};
 
-use crate::{
-    db::DBMessage,
-    executor::ExecutorMessage,
-    models::{TaskError, TaskModel},
-    now,
-    traits::BoxedStream,
-    types::{BoxedTask, DBSender, ExecutorSender, OutputSender},
-    ModelToTask,
-};
+use crate::{ModelToTask, db::DBMessage, executor::ExecutorMessage, models::{OutputModel, TaskError, TaskModel}, now, traits::BoxedStream, types::{BoxedTask, DBSender, ExecutorSender, OutputSender}};
 
 /// Reactor's main job is to listen for messages
 /// And transfer it to certain channel
@@ -74,8 +66,9 @@ impl Reactor {
                         Ok(mut r) => {
                             while let Some(output) = r.next().await {
                                 // println!("{}", x);
-                                output_sender.send((id, output));
+                                output_sender.send(OutputModel::new(id, output));
                             }
+                            info!("Execution of task {} is finished successfully.", id);
                             task_model.exec_count += 1;
                             task_model.last_execution = Some(now!());
                             task_model.next_execution = task_model.calc_next_execution();
@@ -88,6 +81,7 @@ impl Reactor {
                                 .await;
                         }
                         Err(e) => {
+                            warn!("Execution of task {} is finished with an error {}.", id, e.to_string());
                             db_sender
                                 .send(DBMessage::CREATE_ERROR {
                                     resp: dberr_tx,
