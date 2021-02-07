@@ -2,7 +2,7 @@ use chrono::{Duration, NaiveDateTime, Utc};
 use tracing::info;
 use uuid::Uuid;
 
-use crate::{tasks::Frequency, types::BoxedTask};
+use crate::{now, tasks::Frequency, types::BoxedTask};
 #[derive(sqlx::FromRow, Debug, Clone)]
 pub struct TaskModel {
     pub id: Uuid,
@@ -15,7 +15,7 @@ pub struct TaskModel {
     pub last_execution: Option<NaiveDateTime>,
     pub next_execution: Option<NaiveDateTime>,
     pub last_exec_succeeded: bool,
-    pub exec_count: i64
+    pub exec_count: i64,
 }
 
 impl TaskModel {
@@ -55,8 +55,8 @@ impl TaskModel {
         let serde_string = task.to_string();
         let mut task = Self {
             id: task.get_id(),
-            created_at: Utc::now().naive_utc(),
-            updated_at: Utc::now().naive_utc(),
+            created_at: now!(),
+            updated_at: now!(),
             task_type: task.get_type(),
             serde_string,
             frequency,

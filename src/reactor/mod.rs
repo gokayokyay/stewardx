@@ -1,24 +1,33 @@
 use chrono::Utc;
 use futures::StreamExt;
-use tracing::{info, warn};
 use tokio::sync;
+use tracing::{info, warn};
 
-use crate::{ModelToTask, db::DBMessage, executor::ExecutorMessage, models::{TaskError, TaskModel}, traits::BoxedStream, types::{BoxedTask, DBSender, ExecutorSender}};
+use crate::{
+    db::DBMessage,
+    executor::ExecutorMessage,
+    models::{TaskError, TaskModel},
+    now,
+    traits::BoxedStream,
+    types::{BoxedTask, DBSender, ExecutorSender, OutputSender},
+    ModelToTask,
+};
 
 /// Reactor's main job is to listen for messages
 /// And transfer it to certain channel
-/// 
+///
 /// It's another duty is to send GET_SCHEDULED_TASKS
 /// message every second.
-/// 
-/// 
-/// 
-/// 
-/// 
-/// 
+///
+///
+///
+///
+///
+///
 pub struct Reactor {
     pub db_sender: DBSender,
-    pub executor_sender: ExecutorSender
+    pub executor_sender: ExecutorSender,
+    pub output_sender: OutputSender,
 }
 
 impl Reactor {
@@ -49,12 +58,13 @@ impl Reactor {
                         Self::send_executor_execute_message(self.executor_sender.clone(), task)
                             .await,
                         id,
-                        task_model
+                        task_model,
                     ));
                 }
             }
             for (result_receiver, id, mut task_model) in task_rxs.into_iter() {
                 let db_sender = self.db_sender.clone();
+                let output_sender = self.output_sender.clone();
                 let (db_tx, _) = tokio::sync::oneshot::channel();
                 let (dberr_tx, _) = tokio::sync::oneshot::channel();
                 tokio::spawn(async move {
@@ -62,17 +72,20 @@ impl Reactor {
                     match result_receiver.await.unwrap() {
                         // TODO: Handle output
                         Ok(mut r) => {
-                            while let Some(x) = r.next().await {
-                                println!("{}", x);
+                            while let Some(output) = r.next().await {
+                                // println!("{}", x);
+                                output_sender.send((id, output));
                             }
                             task_model.exec_count += 1;
-                            task_model.last_execution = Some(Utc::now().naive_utc());
+                            task_model.last_execution = Some(now!());
                             task_model.next_execution = task_model.calc_next_execution();
                             task_model.last_exec_succeeded = true;
-                            db_sender.send(DBMessage::UPTADE_TASK {
-                                task: task_model,
-                                resp: db_tx,
-                            }).await;
+                            db_sender
+                                .send(DBMessage::UPTADE_TASK {
+                                    task: task_model,
+                                    resp: db_tx,
+                                })
+                                .await;
                         }
                         Err(e) => {
                             db_sender
@@ -90,26 +103,25 @@ impl Reactor {
         }
     }
     async fn send_get_scheduled_tasks_message(&self) -> Result<Vec<TaskModel>, sqlx::Error> {
-        let when = Utc::now().naive_utc();
-        info!("Sending GET_SCHEDULED_TASKS message to DBManager time: {}", when.to_string());
+        let when = now!();
+        info!(
+            "Sending GET_SCHEDULED_TASKS message to DBManager time: {}",
+            when.to_string()
+        );
         let (tx, rx) = sync::oneshot::channel();
-        self.db_sender.send(DBMessage::GET_SCHEDULED_TASKS {
-            when,
-            resp: tx,
-        }).await;
+        self.db_sender
+            .send(DBMessage::GET_SCHEDULED_TASKS { when, resp: tx })
+            .await;
         return rx.await.unwrap();
     }
     async fn send_executor_execute_message(
         sender: ExecutorSender,
-        task: BoxedTask
+        task: BoxedTask,
     ) -> tokio::sync::oneshot::Receiver<Result<BoxedStream, TaskError>> {
         let id = task.get_id();
         info!("Sending Execute message to Executor for task {}", id);
         let (t_tx, t_rx) = tokio::sync::oneshot::channel();
-        let message = ExecutorMessage::Execute {
-            task,
-            resp: t_tx
-        };
+        let message = ExecutorMessage::Execute { task, resp: t_tx };
         sender.send(message).await;
         return t_rx;
     }

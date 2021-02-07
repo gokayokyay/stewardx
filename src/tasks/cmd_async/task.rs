@@ -1,12 +1,15 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncBufReadExt, BufReader};
 use std::process::Stdio;
-use uuid::Uuid;
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio_stream::wrappers::LinesStream;
+use uuid::Uuid;
 
-use crate::{models::TaskError, traits::{BoxedStream, Executable, FromJson}};
+use crate::{
+    models::TaskError,
+    traits::{BoxedStream, Executable, FromJson},
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CmdTask {
@@ -71,9 +74,7 @@ impl Executable for CmdTask {
         let reader = BufReader::new(stdout);
         let lines = reader.lines();
         let stream = LinesStream::new(lines);
-        let stream = stream.map(|l| {
-            l.unwrap()
-        });
+        let stream = stream.map(|l| l.unwrap());
         Ok(Box::new(stream))
     }
 

@@ -1,6 +1,6 @@
 use tracing::{info, instrument};
 
-use crate::{models::TaskError, traits::BoxedStream, types::{BoxedTask}};
+use crate::{models::TaskError, traits::BoxedStream, types::BoxedTask};
 
 use super::ExecutorMessage;
 

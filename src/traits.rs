@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use crate::models::TaskError;
+use std::fmt::Debug;
 
 pub use super::types::BoxedStream;
 use async_trait::async_trait;

@@ -1,6 +1,6 @@
 use std::vec;
 
-use chrono::{NaiveDateTime, Utc, NaiveDate};
+use chrono::{NaiveDate, NaiveDateTime, Utc};
 use sqlx::{Encode, Pool, Postgres, Type};
 use tokio::sync::mpsc::Receiver;
 use tracing::{info, info_span, instrument};
@@ -14,7 +14,7 @@ use super::DBMessage;
 
 pub struct DBManager {
     pool: Pool<Postgres>,
-    rx: Receiver<DBMessage>
+    rx: Receiver<DBMessage>,
 }
 
 macro_rules! now {
@@ -24,7 +24,9 @@ macro_rules! now {
 }
 
 impl DBManager {
-    pub fn new(pool: Pool<Postgres>, rx: Receiver<DBMessage>) -> Self { Self { pool, rx } }
+    pub fn new(pool: Pool<Postgres>, rx: Receiver<DBMessage>) -> Self {
+        Self { pool, rx }
+    }
     #[instrument(
         name = "Adding a new task to database.",
         skip(self, task),
@@ -67,7 +69,8 @@ impl DBManager {
     pub async fn get_task(&self, id: Uuid) -> Result<TaskModel, sqlx::Error> {
         let mut conn = self.pool.acquire().await.unwrap();
         let task = sqlx::query_as!(TaskModel, "SELECT * FROM steward_tasks WHERE id = $1", id)
-            .fetch_one(&mut conn).await;
+            .fetch_one(&mut conn)
+            .await;
         return task;
     }
     #[instrument(
@@ -77,10 +80,18 @@ impl DBManager {
             scheduled_for = %when,
         )
     )]
-    pub async fn get_scheduled_tasks(&self, when: NaiveDateTime) ->Result<Vec<TaskModel>, sqlx::Error> {
+    pub async fn get_scheduled_tasks(
+        &self,
+        when: NaiveDateTime,
+    ) -> Result<Vec<TaskModel>, sqlx::Error> {
         let mut conn = self.pool.acquire().await.unwrap();
-        let rows = sqlx::query_as!(TaskModel, "SELECT * FROM steward_tasks WHERE next_execution <= $1", when)
-            .fetch_all(&mut conn).await;
+        let rows = sqlx::query_as!(
+            TaskModel,
+            "SELECT * FROM steward_tasks WHERE next_execution <= $1",
+            when
+        )
+        .fetch_all(&mut conn)
+        .await;
         rows
     }
     #[instrument(
@@ -91,7 +102,11 @@ impl DBManager {
             next_execution
         )
     )]
-    pub async fn update_next_execution(&self, id: Uuid, next_execution: Option<NaiveDateTime>) -> Result<TaskModel, sqlx::Error> {
+    pub async fn update_next_execution(
+        &self,
+        id: Uuid,
+        next_execution: Option<NaiveDateTime>,
+    ) -> Result<TaskModel, sqlx::Error> {
         let mut conn = self.pool.acquire().await.unwrap();
         let row = sqlx::query_as!(TaskModel, "UPDATE steward_tasks SET next_execution = $1, updated_at = $2 WHERE id = $3 RETURNING *", next_execution, now!(), id)
             .fetch_one(&mut conn).await;
@@ -107,7 +122,9 @@ impl DBManager {
     )]
     pub async fn create_error(&self, error: TaskError) -> Result<TaskError, sqlx::Error> {
         let mut conn = self.pool.acquire().await.unwrap();
-        let row = sqlx::query_as!(TaskError, r#"
+        let row = sqlx::query_as!(
+            TaskError,
+            r#"
             INSERT INTO steward_task_errors
                 ( id, task_id, created_at, error_type, error_message )
                 VALUES
@@ -119,7 +136,9 @@ impl DBManager {
             error.created_at,
             error.error_type,
             error.error_message
-        ).fetch_one(&mut conn).await;
+        )
+        .fetch_one(&mut conn)
+        .await;
         return row;
     }
     #[instrument(
@@ -155,11 +174,13 @@ impl DBManager {
     )]
     pub async fn delete_task(&self, id: Uuid) -> Result<TaskModel, sqlx::Error> {
         let mut conn = self.pool.acquire().await.unwrap();
-        let row = sqlx::query_as!(TaskModel,
+        let row = sqlx::query_as!(
+            TaskModel,
             "DELETE FROM steward_tasks WHERE id = $1 RETURNING *",
             id
-            )
-            .fetch_one(&mut conn).await;
+        )
+        .fetch_one(&mut conn)
+        .await;
         row
     }
 }
@@ -182,7 +203,11 @@ impl DBManager {
                     let tasks = self.get_scheduled_tasks(when).await;
                     resp.send(tasks);
                 }
-                DBMessage::UPDATE_NEXT_EXECUTION { id, next_execution, resp } => {
+                DBMessage::UPDATE_NEXT_EXECUTION {
+                    id,
+                    next_execution,
+                    resp,
+                } => {
                     let task = self.update_next_execution(id, next_execution).await;
                     resp.send(task);
                 }
