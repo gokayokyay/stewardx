@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::models::{TaskError, TaskModel};
+use crate::models::{ExecutionReport, TaskError, TaskModel};
 
 #[derive(Debug)]
 pub enum DBMessage {
@@ -22,10 +22,6 @@ pub enum DBMessage {
         next_execution: Option<NaiveDateTime>,
         resp: DBMessageResponse<TaskModel>,
     },
-    CREATE_ERROR {
-        error: TaskError,
-        resp: DBMessageResponse<TaskError>,
-    },
     UPTADE_TASK {
         task: TaskModel,
         resp: DBMessageResponse<TaskModel>,
@@ -34,6 +30,14 @@ pub enum DBMessage {
         id: Uuid,
         resp: DBMessageResponse<TaskModel>,
     },
+    CREATE_ERROR {
+        error: TaskError,
+        resp: DBMessageResponse<TaskError>,
+    },
+    CREATE_EXECUTION_REPORT {
+        report: ExecutionReport,
+        resp: DBMessageResponse<ExecutionReport>
+    }
 }
 
 impl DBMessage {
@@ -52,6 +56,7 @@ impl DBMessage {
             DBMessage::CREATE_ERROR { .. } => return "CREATE_ERROR",
             DBMessage::UPTADE_TASK { .. } => return "UPDATE_TASK",
             DBMessage::DELETE_TASK { .. } => return "DELETE_TASK",
+            DBMessage::CREATE_EXECUTION_REPORT { .. } => "CREATE_EXECUTION_REPORT",
         }
     }
 }

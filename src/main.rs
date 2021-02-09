@@ -2,7 +2,7 @@ use executor::Executor;
 use models::{OutputModel, TaskModel};
 use reactor::Reactor;
 use std::str::FromStr;
-use tasks::CmdTask;
+use tasks::{CmdTask, TaskWatcher};
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
@@ -33,6 +33,7 @@ async fn main() {
         .unwrap();
     let (db_tx, db_rx) = tokio::sync::mpsc::channel(32);
     let (ex_tx, ex_rx) = tokio::sync::mpsc::channel(32);
+    let (tw_tx, tw_rx) = tokio::sync::mpsc::channel(32);
     let (o_tx, mut o_rx) = tokio::sync::broadcast::channel::<OutputModel>(128);
 
     tokio::spawn(async {
@@ -50,11 +51,17 @@ async fn main() {
         }
     });
 
+    tokio::spawn(async move {
+        let task_watcher = TaskWatcher {};
+        task_watcher.listen(tw_rx).await;
+    });
+
     tokio::spawn(async {
         let mut reactor = Reactor {
             db_sender: db_tx,
             executor_sender: ex_tx,
-            output_sender: o_tx,
+            task_watcher_sender: tw_tx,
+            output_emitter: o_tx,
         };
         reactor.listen().await;
     })

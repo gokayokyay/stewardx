@@ -8,7 +8,7 @@ use tracing::{info, info_span, instrument};
 use sqlx::Row;
 use uuid::Uuid;
 
-use crate::models::{TaskError, TaskModel};
+use crate::models::{ExecutionReport, TaskError, TaskModel};
 
 use super::DBMessage;
 
@@ -183,6 +183,36 @@ impl DBManager {
         .await;
         row
     }
+    #[instrument(
+        name = "Creating execution report.",
+        skip(self, report),
+        fields(
+            task_id = %report.task_id,
+            successful = %report.successful
+        )
+    )]
+    pub async fn create_execution_report(&self, report: ExecutionReport) -> Result<ExecutionReport, sqlx::Error> {
+        let mut conn = self.pool.acquire().await.unwrap();
+        let output = report.output_as_string();
+        let row = sqlx::query!(
+            r#"
+            INSERT INTO steward_task_execution_report
+                ( id, task_id, created_at, successful, output )
+                VALUES
+                ( $1, $2, $3, $4, $5 )
+                RETURNING *
+            "#,
+            report.id,
+            report.task_id,
+            report.created_at,
+            report.successful,
+            output
+        )
+        .fetch_one(&mut conn)
+        .await?;
+        let result = ExecutionReport::new_string_output(row.id, row.task_id, row.created_at, row.successful, row.output);
+        Ok(result)
+    }
 }
 
 impl DBManager {
@@ -222,6 +252,10 @@ impl DBManager {
                 DBMessage::DELETE_TASK { id, resp } => {
                     let task = self.delete_task(id).await;
                     resp.send(task);
+                }
+                DBMessage::CREATE_EXECUTION_REPORT { report, resp } => {
+                    let report = self.create_execution_report(report).await;
+                    resp.send(report);
                 }
             };
         }

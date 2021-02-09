@@ -1,9 +1,13 @@
 mod cmd_async;
 mod errors;
 mod frequency;
+mod watcher;
+mod messages;
 pub use cmd_async::CmdTask;
 // pub use errors::TaskError;
 pub use frequency::Frequency;
+pub use watcher::TaskWatcher;
+pub use messages::TaskWatcherMessage;
 
 #[macro_export]
 macro_rules! ModelToTask {
