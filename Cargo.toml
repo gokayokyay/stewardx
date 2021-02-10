@@ -21,3 +21,4 @@ tracing-futures = "0.2.4"
 cron = "0.8.0"
 tracing-subscriber = { version = "0.2.15", features = ["registry", "env-filter"] }
 tracing-bunyan-formatter = "0.1.7"
+actix-web = "3.3.2"

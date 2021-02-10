@@ -1,10 +1,12 @@
-use crate::{models::TaskError, traits::BoxedStream, types::BoxedTask};
+use crate::{
+    models::TaskError,
+    traits::BoxedStream,
+    types::{BoxedTask, OneShotMessageResponse},
+};
 
 pub enum ExecutorMessage {
     Execute {
         task: BoxedTask,
-        resp: ExecutorResponse<Result<BoxedStream, TaskError>>,
+        resp: OneShotMessageResponse<Result<BoxedStream, TaskError>>,
     },
 }
-
-type ExecutorResponse<T> = tokio::sync::oneshot::Sender<T>;

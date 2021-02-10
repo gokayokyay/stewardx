@@ -7,16 +7,22 @@ use crate::now;
 pub struct OutputModel {
     task_id: Uuid,
     timestamp: NaiveDateTime,
-    output: String
+    output: String,
 }
 
 impl OutputModel {
-    pub fn new(task_id: Uuid, output: String) -> Self { Self { task_id, timestamp: now!(), output } }
+    pub fn new(task_id: Uuid, output: String) -> Self {
+        Self {
+            task_id,
+            timestamp: now!(),
+            output,
+        }
+    }
     pub fn manual(task_id: Uuid, timestamp: NaiveDateTime, output: String) -> Self {
         Self {
             task_id,
             timestamp,
-            output
+            output,
         }
     }
 }

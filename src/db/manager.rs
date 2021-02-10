@@ -73,6 +73,23 @@ impl DBManager {
             .await;
         return task;
     }
+    #[instrument(name = "Fetching tasks from database.", skip(self), fields(offset))]
+    pub async fn get_tasks(&self, offset: Option<i64>) -> Result<Vec<TaskModel>, sqlx::Error> {
+        let mut conn = self.pool.acquire().await.unwrap();
+        let offset = offset.unwrap_or(0);
+        let task = sqlx::query_as!(
+            TaskModel,
+            r#"
+        SELECT * FROM steward_tasks
+        ORDER BY created_at DESC
+        LIMIT 100
+        OFFSET $1"#,
+            offset
+        )
+        .fetch_all(&mut conn)
+        .await;
+        return task;
+    }
     #[instrument(
         name = "Get scheduled tasks from database.",
         skip(self),
@@ -191,7 +208,10 @@ impl DBManager {
             successful = %report.successful
         )
     )]
-    pub async fn create_execution_report(&self, report: ExecutionReport) -> Result<ExecutionReport, sqlx::Error> {
+    pub async fn create_execution_report(
+        &self,
+        report: ExecutionReport,
+    ) -> Result<ExecutionReport, sqlx::Error> {
         let mut conn = self.pool.acquire().await.unwrap();
         let output = report.output_as_string();
         let row = sqlx::query!(
@@ -210,8 +230,48 @@ impl DBManager {
         )
         .fetch_one(&mut conn)
         .await?;
-        let result = ExecutionReport::new_string_output(row.id, row.task_id, row.created_at, row.successful, row.output);
+        let result = ExecutionReport::new_string_output(
+            row.id,
+            row.task_id,
+            row.created_at,
+            row.successful,
+            row.output,
+        );
         Ok(result)
+    }
+    #[instrument(name = "Get execution reports.", skip(self))]
+    pub async fn get_execution_reports(
+        &self,
+        task_id: Uuid,
+        offset: Option<i64>,
+    ) -> Result<Vec<ExecutionReport>, sqlx::Error> {
+        let offset = offset.unwrap_or(0);
+        let mut conn = self.pool.acquire().await.unwrap();
+        let rows = sqlx::query!(
+            r#"
+            SELECT * FROM steward_task_execution_report
+            WHERE task_id = $1
+            ORDER BY created_at DESC
+            LIMIT 100
+            OFFSET $2
+            "#,
+            task_id,
+            offset
+        )
+        .fetch_all(&mut conn)
+        .await?;
+        let mut results = vec![];
+        for row in rows {
+            let result = ExecutionReport::new_string_output(
+                row.id,
+                row.task_id,
+                row.created_at,
+                row.successful,
+                row.output,
+            );
+            results.push(result);
+        }
+        Ok(results)
     }
 }
 
@@ -224,6 +284,10 @@ impl DBManager {
                 DBMessage::GET_TASK { id, resp } => {
                     let task = self.get_task(id).await;
                     resp.send(task);
+                }
+                DBMessage::GET_TASKS { offset, resp } => {
+                    let tasks = self.get_tasks(offset).await;
+                    resp.send(tasks);
                 }
                 DBMessage::CREATE_TASK { task, resp } => {
                     let task = self.create_task(task).await;
@@ -256,6 +320,14 @@ impl DBManager {
                 DBMessage::CREATE_EXECUTION_REPORT { report, resp } => {
                     let report = self.create_execution_report(report).await;
                     resp.send(report);
+                }
+                DBMessage::GET_EXECUTION_REPORTS {
+                    task_id,
+                    offset,
+                    resp,
+                } => {
+                    let reports = self.get_execution_reports(task_id, offset).await;
+                    resp.send(reports);
                 }
             };
         }

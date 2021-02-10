@@ -13,7 +13,10 @@ pub struct TaskError {
 
 impl ToString for TaskError {
     fn to_string(&self) -> String {
-        format!("TaskError for task: {}. Error type: {}, error message: {}", self.id, self.error_type, self.error_message)
+        format!(
+            "TaskError for task: {}. Error type: {}, error message: {}",
+            self.id, self.error_type, self.error_message
+        )
     }
 }
 

@@ -1,9 +1,10 @@
 use chrono::{Duration, NaiveDateTime, Utc};
+use serde::Serialize;
 use tracing::info;
 use uuid::Uuid;
 
 use crate::{now, tasks::Frequency, types::BoxedTask};
-#[derive(sqlx::FromRow, Debug, Clone)]
+#[derive(sqlx::FromRow, Debug, Clone, Serialize)]
 pub struct TaskModel {
     pub id: Uuid,
     pub created_at: NaiveDateTime,

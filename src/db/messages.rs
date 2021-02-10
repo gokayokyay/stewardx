@@ -1,13 +1,20 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::models::{ExecutionReport, TaskError, TaskModel};
+use crate::{
+    models::{ExecutionReport, TaskError, TaskModel},
+    types::OneShotMessageResponse,
+};
 
 #[derive(Debug)]
 pub enum DBMessage {
     GET_TASK {
         id: Uuid,
         resp: DBMessageResponse<TaskModel>,
+    },
+    GET_TASKS {
+        offset: Option<i64>,
+        resp: DBMessageResponse<Vec<TaskModel>>,
     },
     CREATE_TASK {
         task: TaskModel,
@@ -36,8 +43,13 @@ pub enum DBMessage {
     },
     CREATE_EXECUTION_REPORT {
         report: ExecutionReport,
-        resp: DBMessageResponse<ExecutionReport>
-    }
+        resp: DBMessageResponse<ExecutionReport>,
+    },
+    GET_EXECUTION_REPORTS {
+        task_id: Uuid,
+        offset: Option<i64>,
+        resp: DBMessageResponse<Vec<ExecutionReport>>,
+    },
 }
 
 impl DBMessage {
@@ -46,6 +58,7 @@ impl DBMessage {
             DBMessage::GET_TASK { .. } => {
                 return "GET_TASK";
             }
+            DBMessage::GET_TASKS { .. } => "GET_TASKS",
             DBMessage::CREATE_TASK { .. } => {
                 return "CREATE_TASK";
             }
@@ -57,8 +70,9 @@ impl DBMessage {
             DBMessage::UPTADE_TASK { .. } => return "UPDATE_TASK",
             DBMessage::DELETE_TASK { .. } => return "DELETE_TASK",
             DBMessage::CREATE_EXECUTION_REPORT { .. } => "CREATE_EXECUTION_REPORT",
+            DBMessage::GET_EXECUTION_REPORTS { .. } => "GET_EXECUTION_REPORTS",
         }
     }
 }
 
-pub type DBMessageResponse<T> = tokio::sync::oneshot::Sender<Result<T, sqlx::Error>>;
+pub type DBMessageResponse<T> = OneShotMessageResponse<Result<T, sqlx::Error>>;

@@ -1,7 +1,9 @@
 use executor::Executor;
 use models::{OutputModel, TaskModel};
 use reactor::Reactor;
-use std::str::FromStr;
+use server::Server;
+use tokio::task::spawn_blocking;
+use std::{str::FromStr, sync::Arc};
 use tasks::{CmdTask, TaskWatcher};
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
@@ -11,6 +13,7 @@ mod db;
 mod executor;
 mod models;
 mod reactor;
+mod server;
 mod tasks;
 mod traits;
 mod types;
@@ -27,7 +30,6 @@ async fn main() {
     // .with(JsonStorageLayer)
     // .with(formatting_layer);
     set_global_default(subscriber).expect("Failed to set subscriber");
-
     let pool = db::connect(&std::env::var("DATABASE_URL").unwrap())
         .await
         .unwrap();
@@ -35,6 +37,7 @@ async fn main() {
     let (ex_tx, ex_rx) = tokio::sync::mpsc::channel(32);
     let (tw_tx, tw_rx) = tokio::sync::mpsc::channel(32);
     let (o_tx, mut o_rx) = tokio::sync::broadcast::channel::<OutputModel>(128);
+    let (sv_tx, mut sv_rx) = tokio::sync::mpsc::channel(32);
 
     tokio::spawn(async {
         let mut db_manager = db::DBManager::new(pool, db_rx);
@@ -56,12 +59,19 @@ async fn main() {
         task_watcher.listen(tw_rx).await;
     });
 
+    tokio::task::spawn_blocking(|| {
+        let server = Server::new(sv_tx);
+        server.listen(String::from("0.0.0.0"), 3000);
+    });
+
     tokio::spawn(async {
+        let server_receiver = Arc::new(tokio::sync::Mutex::new(sv_rx));
         let mut reactor = Reactor {
             db_sender: db_tx,
             executor_sender: ex_tx,
             task_watcher_sender: tw_tx,
             output_emitter: o_tx,
+            server_receiver,
         };
         reactor.listen().await;
     })
