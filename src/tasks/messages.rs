@@ -17,3 +17,11 @@ pub enum TaskWatcherMessage {
         resp: OneShotMessageResponse<ExecutionReport>,
     },
 }
+
+impl TaskWatcherMessage {
+    pub fn get_type<'a>(&'a self) -> &'a str {
+        return match self {
+            TaskWatcherMessage::WATCH_EXECUTION { .. } => "WATCH_EXECUTION",
+        };
+    }
+}

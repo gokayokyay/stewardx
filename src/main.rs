@@ -59,9 +59,9 @@ async fn main() {
         task_watcher.listen(tw_rx).await;
     });
 
-    tokio::task::spawn_blocking(|| {
+    tokio::spawn(async move {
         let server = Server::new(sv_tx);
-        server.listen(String::from("0.0.0.0"), 3000);
+        server.listen(String::from("0.0.0.0"), 3000).await;
     });
 
     tokio::spawn(async {

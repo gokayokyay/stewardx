@@ -1,4 +1,5 @@
 use tokio_stream::StreamExt;
+use tracing::{info, instrument};
 
 use crate::models::{ExecutionReport, OutputModel};
 
@@ -7,8 +8,11 @@ use super::TaskWatcherMessage;
 pub struct TaskWatcher {}
 
 impl TaskWatcher {
+    #[instrument(skip(self))]
     pub async fn listen(&self, mut receiver: tokio::sync::mpsc::Receiver<TaskWatcherMessage>) {
+        info!("TaskWatcher started listening");
         while let Some(message) = receiver.recv().await {
+            info!("Got a message {}", message.get_type());
             tokio::spawn(async move {
                 match message {
                     TaskWatcherMessage::WATCH_EXECUTION {
