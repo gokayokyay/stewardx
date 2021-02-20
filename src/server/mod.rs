@@ -12,7 +12,8 @@ pub struct Server {
     message_sender: Sender<ServerMessage>,
 }
 
-macro_rules! json {
+
+macro_rules! response_json {
     (body: $body:expr) => {
         hyper::Response::builder()
             .header(hyper::header::CONTENT_TYPE, "application/json")
@@ -39,14 +40,14 @@ async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, hyper::http::Er
     let result = rx.await.unwrap();
     let a = hyper::StatusCode::INTERNAL_SERVER_ERROR;
     match result {
-        Ok(result) => json!(body: &result),
+        Ok(result) => response_json!(body: &result),
         Err(e) => {
             let obj = serde_json::json!({
                 "error": e.to_string()
             });
             let obj = obj.as_str();
             let obj = obj.unwrap();
-            json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
+            response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
         }
     }
 }
