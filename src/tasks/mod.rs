@@ -1,12 +1,10 @@
 mod cmd_async;
 mod errors;
 mod frequency;
-mod messages;
 mod watcher;
 pub use cmd_async::CmdTask;
 // pub use errors::TaskError;
 pub use frequency::Frequency;
-pub use messages::TaskWatcherMessage;
 pub use watcher::TaskWatcher;
 
 #[macro_export]

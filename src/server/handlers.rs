@@ -1,7 +1,8 @@
+use hyper::{Body, Request, Response, Server as HyperServer, StatusCode};
 use routerify::ext::RequestExt;
 use tokio::sync::mpsc::Sender;
-use hyper::{Body, Request, Response, Server as HyperServer, StatusCode};
-use super::ServerMessage;
+
+use crate::messages::Message;
 
 #[macro_export]
 macro_rules! response_json {
@@ -20,14 +21,14 @@ macro_rules! response_json {
 
 pub async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, hyper::http::Error> {
     let (tx, rx) = tokio::sync::oneshot::channel();
-    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    let sender = req.data::<Sender<Message>>().unwrap();
     sender
-        .send(ServerMessage::GET_TASKS {
+        .send(Message::Server_GET_TASKS {
             offset: None,
             resp: tx,
         })
         .await;
-    
+
     let result = rx.await.unwrap();
     match result {
         Ok(result) => response_json!(body: &result),

@@ -3,19 +3,19 @@ use tracing::{info, instrument};
 
 use crate::models::{ExecutionReport, OutputModel};
 
-use super::TaskWatcherMessage;
+use crate::messages::Message;
 
 pub struct TaskWatcher {}
 
 impl TaskWatcher {
     #[instrument(skip(self))]
-    pub async fn listen(&self, mut receiver: tokio::sync::mpsc::Receiver<TaskWatcherMessage>) {
+    pub async fn listen(&self, mut receiver: tokio::sync::mpsc::Receiver<Message>) {
         info!("TaskWatcher started listening");
         while let Some(message) = receiver.recv().await {
             info!("Got a message {}", message.get_type());
             tokio::spawn(async move {
                 match message {
-                    TaskWatcherMessage::WATCH_EXECUTION {
+                    Message::TaskWatcher_WATCH_EXECUTION {
                         task_id,
                         exec_process,
                         output_resp,
@@ -32,6 +32,7 @@ impl TaskWatcher {
                         }
                         Err(e) => {}
                     },
+                    _ => panic!(),
                 }
             });
         }

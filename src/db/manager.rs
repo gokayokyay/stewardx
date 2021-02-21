@@ -8,13 +8,11 @@ use tracing::{info, info_span, instrument};
 use sqlx::Row;
 use uuid::Uuid;
 
-use crate::models::{ExecutionReport, TaskError, TaskModel};
-
-use super::DBMessage;
+use crate::{messages::Message, models::{ExecutionReport, TaskError, TaskModel}};
 
 pub struct DBManager {
     pool: Pool<Postgres>,
-    rx: Receiver<DBMessage>,
+    rx: Receiver<Message>,
 }
 
 macro_rules! now {
@@ -24,7 +22,7 @@ macro_rules! now {
 }
 
 impl DBManager {
-    pub fn new(pool: Pool<Postgres>, rx: Receiver<DBMessage>) -> Self {
+    pub fn new(pool: Pool<Postgres>, rx: Receiver<Message>) -> Self {
         Self { pool, rx }
     }
     #[instrument(
@@ -281,23 +279,23 @@ impl DBManager {
         while let Some(message) = self.rx.recv().await {
             info!("Got a {} message", message.get_type());
             match message {
-                DBMessage::GET_TASK { id, resp } => {
+                Message::DB_GET_TASK { id, resp } => {
                     let task = self.get_task(id).await;
                     resp.send(task);
                 }
-                DBMessage::GET_TASKS { offset, resp } => {
+                Message::DB_GET_TASKS { offset, resp } => {
                     let tasks = self.get_tasks(offset).await;
                     resp.send(tasks);
                 }
-                DBMessage::CREATE_TASK { task, resp } => {
+                Message::DB_CREATE_TASK { task, resp } => {
                     let task = self.create_task(task).await;
                     resp.send(task);
                 }
-                DBMessage::GET_SCHEDULED_TASKS { when, resp } => {
+                Message::DB_GET_SCHEDULED_TASKS { when, resp } => {
                     let tasks = self.get_scheduled_tasks(when).await;
                     resp.send(tasks);
                 }
-                DBMessage::UPDATE_NEXT_EXECUTION {
+                Message::DB_UPDATE_NEXT_EXECUTION {
                     id,
                     next_execution,
                     resp,
@@ -305,23 +303,23 @@ impl DBManager {
                     let task = self.update_next_execution(id, next_execution).await;
                     resp.send(task);
                 }
-                DBMessage::CREATE_ERROR { error, resp } => {
+                Message::DB_CREATE_ERROR { error, resp } => {
                     let error = self.create_error(error).await;
                     resp.send(error);
                 }
-                DBMessage::UPTADE_TASK { task, resp } => {
+                Message::DB_UPTADE_TASK { task, resp } => {
                     let task = self.update_task(task).await;
                     resp.send(task);
                 }
-                DBMessage::DELETE_TASK { id, resp } => {
+                Message::DB_DELETE_TASK { id, resp } => {
                     let task = self.delete_task(id).await;
                     resp.send(task);
                 }
-                DBMessage::CREATE_EXECUTION_REPORT { report, resp } => {
+                Message::DB_CREATE_EXECUTION_REPORT { report, resp } => {
                     let report = self.create_execution_report(report).await;
                     resp.send(report);
                 }
-                DBMessage::GET_EXECUTION_REPORTS {
+                Message::DB_GET_EXECUTION_REPORTS {
                     task_id,
                     offset,
                     resp,
@@ -329,6 +327,7 @@ impl DBManager {
                     let reports = self.get_execution_reports(task_id, offset).await;
                     resp.send(reports);
                 }
+                _ => panic!()
             };
         }
     }

@@ -1,21 +1,21 @@
-use tokio::sync::mpsc::Sender;
+use hyper::Server as HyperServer;
 use std::{net::SocketAddr, str::FromStr};
-use hyper::{Server as HyperServer};
+use tokio::sync::mpsc::Sender;
 
-use routerify::{Middleware, RequestInfo, Router, RouterService, ext::RequestExt};
+use routerify::{ext::RequestExt, Middleware, RequestInfo, Router, RouterService};
 
-mod messages;
 mod handlers;
-use handlers::{get_tasks};
-pub use messages::ServerMessage;
+use handlers::get_tasks;
 use tracing::info;
 
+use crate::messages::Message;
+
 pub struct Server {
-    message_sender: Sender<ServerMessage>,
+    message_sender: Sender<Message>,
 }
 
 impl Server {
-    pub fn new(message_sender: Sender<ServerMessage>) -> Self {
+    pub fn new(message_sender: Sender<Message>) -> Self {
         Self { message_sender }
     }
     pub async fn listen(&self, host: String, port: i64) {
@@ -30,7 +30,8 @@ impl Server {
             .build()
             .unwrap();
         let service = RouterService::new(router).unwrap();
-        let addr = SocketAddr::from_str(format!("{}:{}", host, port).as_str()).expect("Invalid host or port.");
+        let addr = SocketAddr::from_str(format!("{}:{}", host, port).as_str())
+            .expect("Invalid host or port.");
         let server = HyperServer::bind(&addr).serve(service);
         info!("Server started listening on {}", addr);
         if let Err(err) = server.await {
