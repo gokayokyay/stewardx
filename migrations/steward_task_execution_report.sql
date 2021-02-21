@@ -5,4 +5,4 @@ CREATE TABLE IF NOT EXISTS steward_task_execution_report (
     successful boolean NOT NULL,
     output text NOT NULL,
     PRIMARY KEY (id)
-)
+);

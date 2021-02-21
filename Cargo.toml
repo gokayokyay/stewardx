@@ -23,3 +23,4 @@ tracing-subscriber = { version = "0.2.15", features = ["registry", "env-filter"]
 tracing-bunyan-formatter = "0.1.7"
 hyper = "0.14.4"
 routerify = "2.0.0-beta-2"
+anyhow = "1.0.38"

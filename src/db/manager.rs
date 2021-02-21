@@ -1,7 +1,7 @@
 use std::vec;
 
 use chrono::{NaiveDate, NaiveDateTime, Utc};
-use sqlx::{Encode, Pool, Postgres, Type};
+use sqlx::{Encode, Pool, pool::PoolConnection, Postgres, Type};
 use tokio::sync::mpsc::Receiver;
 use tracing::{info, info_span, instrument};
 // use futures::TryStreamExt;
@@ -23,20 +23,21 @@ macro_rules! now {
     };
 }
 
+type Connection = PoolConnection<Postgres>;
+
 impl DBManager {
     pub fn new(pool: Pool<Postgres>, rx: Receiver<DBMessage>) -> Self {
         Self { pool, rx }
     }
     #[instrument(
         name = "Adding a new task to database.",
-        skip(self, task),
+        skip(conn, task),
         fields(
             task_id = %task.id,
             frequency = %task.frequency
         )
     )]
-    pub async fn create_task(&self, task: TaskModel) -> Result<TaskModel, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
+    pub async fn create_task(conn: &mut Connection, task: TaskModel) -> Result<TaskModel, sqlx::Error> {
         let row = sqlx::query_as!(TaskModel, r#"
             INSERT INTO steward_tasks
                 ( id, created_at, updated_at, task_type, last_execution, next_execution, serde_string, last_exec_succeeded, frequency, interval, exec_count )
@@ -56,26 +57,24 @@ impl DBManager {
             task.interval,
             task.exec_count
             )
-            .fetch_one(&mut conn).await;
+            .fetch_one(conn).await;
         return row;
     }
     #[instrument(
         name = "Fetching a task from database.",
-        skip(self),
+        skip(conn),
         fields(
             task_id = %id,
         )
     )]
-    pub async fn get_task(&self, id: Uuid) -> Result<TaskModel, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
+    pub async fn get_task(conn: &mut Connection, id: Uuid) -> Result<TaskModel, sqlx::Error> {
         let task = sqlx::query_as!(TaskModel, "SELECT * FROM steward_tasks WHERE id = $1", id)
-            .fetch_one(&mut conn)
+            .fetch_one(conn)
             .await;
         return task;
     }
-    #[instrument(name = "Fetching tasks from database.", skip(self), fields(offset))]
-    pub async fn get_tasks(&self, offset: Option<i64>) -> Result<Vec<TaskModel>, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
+    #[instrument(name = "Fetching tasks from database.", skip(conn), fields(offset))]
+    pub async fn get_tasks(conn: &mut Connection, offset: Option<i64>) -> Result<Vec<TaskModel>, sqlx::Error> {
         let offset = offset.unwrap_or(0);
         let task = sqlx::query_as!(
             TaskModel,
@@ -86,59 +85,56 @@ impl DBManager {
         OFFSET $1"#,
             offset
         )
-        .fetch_all(&mut conn)
+        .fetch_all(conn)
         .await;
         return task;
     }
     #[instrument(
         name = "Get scheduled tasks from database.",
-        skip(self),
+        skip(conn),
         fields(
             scheduled_for = %when,
         )
     )]
     pub async fn get_scheduled_tasks(
-        &self,
+        conn: &mut Connection,
         when: NaiveDateTime,
     ) -> Result<Vec<TaskModel>, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
         let rows = sqlx::query_as!(
             TaskModel,
             "SELECT * FROM steward_tasks WHERE next_execution <= $1",
             when
         )
-        .fetch_all(&mut conn)
+        .fetch_all(conn)
         .await;
         rows
     }
     #[instrument(
         name = "Update task's next execution.",
-        skip(self),
+        skip(conn),
         fields(
             task_id = %id,
             next_execution
         )
     )]
     pub async fn update_next_execution(
-        &self,
+        conn: &mut Connection,
         id: Uuid,
         next_execution: Option<NaiveDateTime>,
     ) -> Result<TaskModel, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
         let row = sqlx::query_as!(TaskModel, "UPDATE steward_tasks SET next_execution = $1, updated_at = $2 WHERE id = $3 RETURNING *", next_execution, now!(), id)
-            .fetch_one(&mut conn).await;
+            .fetch_one(conn).await;
         row
     }
     #[instrument(
         name = "Adding a new error to database.",
-        skip(self),
+        skip(conn),
         fields(
             task_id = %error.task_id,
             error
         )
     )]
-    pub async fn create_error(&self, error: TaskError) -> Result<TaskError, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
+    pub async fn create_error(conn: &mut Connection, error: TaskError) -> Result<TaskError, sqlx::Error> {
         let row = sqlx::query_as!(
             TaskError,
             r#"
@@ -154,19 +150,18 @@ impl DBManager {
             error.error_type,
             error.error_message
         )
-        .fetch_one(&mut conn)
+        .fetch_one(conn)
         .await;
         return row;
     }
     #[instrument(
         name = "Updating task.",
-        skip(self),
+        skip(conn),
         fields(
             task_id = %task.id,
         )
     )]
-    pub async fn update_task(&self, task: TaskModel) -> Result<TaskModel, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
+    pub async fn update_task(conn: &mut Connection, task: TaskModel) -> Result<TaskModel, sqlx::Error> {
         let row = sqlx::query_as!(TaskModel,
             "UPDATE steward_tasks SET updated_at = $2, serde_string = $3, frequency = $4, interval = $5, last_execution = $6, next_execution = $7, last_exec_succeeded = $8, exec_count = $9 WHERE id = $1 RETURNING *",
             task.id,
@@ -179,40 +174,38 @@ impl DBManager {
             task.last_exec_succeeded,
             task.exec_count
             )
-            .fetch_one(&mut conn).await;
+            .fetch_one(conn).await;
         row
     }
     #[instrument(
         name = "Deleting task.",
-        skip(self),
+        skip(conn),
         fields(
             task_id = %id,
         )
     )]
-    pub async fn delete_task(&self, id: Uuid) -> Result<TaskModel, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
+    pub async fn delete_task(conn: &mut Connection, id: Uuid) -> Result<TaskModel, sqlx::Error> {
         let row = sqlx::query_as!(
             TaskModel,
             "DELETE FROM steward_tasks WHERE id = $1 RETURNING *",
             id
         )
-        .fetch_one(&mut conn)
+        .fetch_one(conn)
         .await;
         row
     }
     #[instrument(
         name = "Creating execution report.",
-        skip(self, report),
+        skip(conn, report),
         fields(
             task_id = %report.task_id,
             successful = %report.successful
         )
     )]
     pub async fn create_execution_report(
-        &self,
+        conn: &mut Connection,
         report: ExecutionReport,
     ) -> Result<ExecutionReport, sqlx::Error> {
-        let mut conn = self.pool.acquire().await.unwrap();
         let output = report.output_as_string();
         let row = sqlx::query!(
             r#"
@@ -228,7 +221,7 @@ impl DBManager {
             report.successful,
             output
         )
-        .fetch_one(&mut conn)
+        .fetch_one(conn)
         .await?;
         let result = ExecutionReport::new_string_output(
             row.id,
@@ -239,14 +232,13 @@ impl DBManager {
         );
         Ok(result)
     }
-    #[instrument(name = "Get execution reports.", skip(self))]
+    #[instrument(name = "Get execution reports.", skip(conn))]
     pub async fn get_execution_reports(
-        &self,
+        conn: &mut Connection,
         task_id: Uuid,
         offset: Option<i64>,
     ) -> Result<Vec<ExecutionReport>, sqlx::Error> {
         let offset = offset.unwrap_or(0);
-        let mut conn = self.pool.acquire().await.unwrap();
         let rows = sqlx::query!(
             r#"
             SELECT * FROM steward_task_execution_report
@@ -258,7 +250,7 @@ impl DBManager {
             task_id,
             offset
         )
-        .fetch_all(&mut conn)
+        .fetch_all(conn)
         .await?;
         let mut results = vec![];
         for row in rows {
@@ -275,61 +267,77 @@ impl DBManager {
     }
 }
 
+macro_rules! sqlx_to_anyhow {
+    ($result: expr) => {
+        match $result {
+            Ok(r) => {
+                Ok(r)
+            },
+            Err(e) => {
+                Err(anyhow::anyhow!(e))
+            }
+        }
+    };
+}
+
 impl DBManager {
     pub async fn listen(&mut self) {
         info!("DBManager started listening for messages.");
         while let Some(message) = self.rx.recv().await {
             info!("Got a {} message", message.get_type());
-            match message {
-                DBMessage::GET_TASK { id, resp } => {
-                    let task = self.get_task(id).await;
-                    resp.send(task);
-                }
-                DBMessage::GET_TASKS { offset, resp } => {
-                    let tasks = self.get_tasks(offset).await;
-                    resp.send(tasks);
-                }
-                DBMessage::CREATE_TASK { task, resp } => {
-                    let task = self.create_task(task).await;
-                    resp.send(task);
-                }
-                DBMessage::GET_SCHEDULED_TASKS { when, resp } => {
-                    let tasks = self.get_scheduled_tasks(when).await;
-                    resp.send(tasks);
-                }
-                DBMessage::UPDATE_NEXT_EXECUTION {
-                    id,
-                    next_execution,
-                    resp,
-                } => {
-                    let task = self.update_next_execution(id, next_execution).await;
-                    resp.send(task);
-                }
-                DBMessage::CREATE_ERROR { error, resp } => {
-                    let error = self.create_error(error).await;
-                    resp.send(error);
-                }
-                DBMessage::UPTADE_TASK { task, resp } => {
-                    let task = self.update_task(task).await;
-                    resp.send(task);
-                }
-                DBMessage::DELETE_TASK { id, resp } => {
-                    let task = self.delete_task(id).await;
-                    resp.send(task);
-                }
-                DBMessage::CREATE_EXECUTION_REPORT { report, resp } => {
-                    let report = self.create_execution_report(report).await;
-                    resp.send(report);
-                }
-                DBMessage::GET_EXECUTION_REPORTS {
-                    task_id,
-                    offset,
-                    resp,
-                } => {
-                    let reports = self.get_execution_reports(task_id, offset).await;
-                    resp.send(reports);
-                }
-            };
+            let mut connection = self.pool.acquire().await.unwrap();
+            tokio::spawn(async move {
+                match message {
+                    DBMessage::GET_TASK { id, resp } => {
+                        let task = sqlx_to_anyhow!(Self::get_task(&mut connection, id).await);
+                        resp.send(task);
+                    }
+                    DBMessage::GET_TASKS { offset, resp } => {
+                        let tasks = sqlx_to_anyhow!(Self::get_tasks(&mut connection, offset).await);
+                        resp.send(tasks);
+                    }
+                    DBMessage::CREATE_TASK { task, resp } => {
+                        let task = sqlx_to_anyhow!(Self::create_task(&mut connection, task).await);
+                        resp.send(task);
+                    }
+                    DBMessage::GET_SCHEDULED_TASKS { when, resp } => {
+                        let tasks = sqlx_to_anyhow!(Self::get_scheduled_tasks(&mut connection, when).await);
+                        resp.send(tasks);
+                    }
+                    DBMessage::UPDATE_NEXT_EXECUTION {
+                        id,
+                        next_execution,
+                        resp,
+                    } => {
+                        let task = sqlx_to_anyhow!(Self::update_next_execution(&mut connection, id, next_execution).await);
+                        resp.send(task);
+                    }
+                    DBMessage::CREATE_ERROR { error, resp } => {
+                        let error = sqlx_to_anyhow!(Self::create_error(&mut connection, error).await);
+                        resp.send(error);
+                    }
+                    DBMessage::UPTADE_TASK { task, resp } => {
+                        let task = sqlx_to_anyhow!(Self::update_task(&mut connection, task).await);
+                        resp.send(task);
+                    }
+                    DBMessage::DELETE_TASK { id, resp } => {
+                        let task = sqlx_to_anyhow!(Self::delete_task(&mut connection, id).await);
+                        resp.send(task);
+                    }
+                    DBMessage::CREATE_EXECUTION_REPORT { report, resp } => {
+                        let report = sqlx_to_anyhow!(Self::create_execution_report(&mut connection, report).await);
+                        resp.send(report);
+                    }
+                    DBMessage::GET_EXECUTION_REPORTS {
+                        task_id,
+                        offset,
+                        resp,
+                    } => {
+                        let reports = sqlx_to_anyhow!(Self::get_execution_reports(&mut connection, task_id, offset).await);
+                        resp.send(reports);
+                    }
+                };
+            });
         }
     }
 }

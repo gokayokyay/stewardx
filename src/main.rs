@@ -1,3 +1,4 @@
+use db::DBManager;
 use executor::Executor;
 use models::{OutputModel, TaskModel};
 use reactor::Reactor;
@@ -79,7 +80,7 @@ async fn main() {
     // let dbman = db::DBManager::new(pool, db_rx);
     // dbman.delete_task(uuid::Uuid::from_str("6c76b64f-6497-43dd-bd2b-05a1931164bb").unwrap()).await;
     // let task = CmdTask::new(uuid::Uuid::new_v4(), Box::new("cat Cargo.toml".to_string()));
-    // // dbman.create_task(Box::new(task), "Every(30 * * * * * *)".to_string()).await;
+    // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(task), "Every(30 * * * * * *)".to_string())).await;
     // // // let t = dbman.get_task(uuid::Uuid::from_str("9de07abf-7832-4ae2-be61-793912bb5805").unwrap()).await;
     // // // println!("{:?}", t);
     // dbman.create_task(TaskModel::from_boxed_task(Box::new(task), "Every(30 * * * * * *)".to_string())).await;

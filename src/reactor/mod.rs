@@ -153,7 +153,7 @@ impl Reactor {
                                     resp.send(Ok(o));
                                 }
                                 None => {
-
+                                    // resp.send(t)
                                 }
                             }
                         }
@@ -165,7 +165,7 @@ impl Reactor {
             }
         }
     }
-    async fn send_db_get_scheduled_tasks_message(&self) -> Result<Vec<TaskModel>, sqlx::Error> {
+    async fn send_db_get_scheduled_tasks_message(&self) -> Result<Vec<TaskModel>, anyhow::Error> {
         let when = now!();
         info!(
             "Sending GET_SCHEDULED_TASKS message to DBManager time: {}",
@@ -191,7 +191,7 @@ impl Reactor {
     async fn send_db_create_execution_report_message(
         sender: DBSender,
         report: ExecutionReport,
-    ) -> Result<ExecutionReport, sqlx::Error> {
+    ) -> Result<ExecutionReport, anyhow::Error> {
         let when = now!();
         info!(
             "Sending CREATE_EXECUTION_REPORT message to DBManager: {}",

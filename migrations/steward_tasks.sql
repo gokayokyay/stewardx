@@ -11,4 +11,4 @@ CREATE TABLE IF NOT EXISTS steward_tasks (
     last_exec_succeeded boolean NOT NULL,
     exec_count bigint DEFAULT '0' NOT NULL,
     PRIMARY KEY (id)
-)
+);

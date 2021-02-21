@@ -75,4 +75,4 @@ impl DBMessage {
     }
 }
 
-pub type DBMessageResponse<T> = OneShotMessageResponse<Result<T, sqlx::Error>>;
+pub type DBMessageResponse<T> = OneShotMessageResponse<Result<T, anyhow::Error>>;

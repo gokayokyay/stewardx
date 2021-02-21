@@ -5,4 +5,4 @@ CREATE TABLE IF NOT EXISTS steward_task_errors (
     error_type text NOT NULL,
     error_message text NOT NULL,
     PRIMARY KEY (id)
-)
+);

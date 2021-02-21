@@ -6,11 +6,11 @@ use crate::{models::TaskModel, traits::BoxedStream, types::OneShotMessageRespons
 pub enum ServerMessage {
     GET_TASKS {
         offset: Option<i64>,
-        resp: OneShotMessageResponse<Result<Vec<TaskModel>, sqlx::Error>>,
+        resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>,
     },
     EXECUTE_TASK {
         task_id: Uuid,
-        resp: OneShotMessageResponse<Result<BoxedStream, sqlx::Error>>,
+        resp: OneShotMessageResponse<anyhow::Result<BoxedStream>>,
     }
 }
 
