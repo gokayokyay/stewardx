@@ -45,10 +45,11 @@ impl Reactor {
     pub async fn listen(&mut self) {
         let mut server_receiver = self.server_receiver.clone();
         let db_sender = self.db_sender.clone();
+        let exec_sender = self.executor_sender.clone();
         tokio::spawn(async move {
             let mut receiver = server_receiver.lock().await;
             let receiver = &mut *receiver;
-            Self::listen_for_server(receiver, db_sender).await;
+            Self::listen_for_server(receiver, db_sender, exec_sender).await;
         });
         loop {
             let task_models = match self.send_db_get_scheduled_tasks_message().await {
@@ -118,7 +119,7 @@ impl Reactor {
         name = "Listening for messages from server."
         skip(rx, db_sender)
     )]
-    pub async fn listen_for_server(rx: &mut ServerReceiver, db_sender: DBSender) {
+    pub async fn listen_for_server(rx: &mut ServerReceiver, db_sender: DBSender, executor_sender: ExecutorSender) {
         while let Some(message) = rx.recv().await {
             info!("Got a message from server: {}", message.get_type());
             match message {
@@ -132,6 +133,34 @@ impl Reactor {
                         .await;
                     let result = db_rx.await.unwrap();
                     resp.send(result);
+                },
+                ServerMessage::EXECUTE_TASK { task_id, resp } => {
+                    let (db_tx, db_rx) = tokio::sync::oneshot::channel();
+                    db_sender
+                        .send(DBMessage::GET_TASK {
+                            id: task_id,
+                            resp: db_tx,
+                        })
+                        .await;
+                    let task = db_rx.await.unwrap();
+                    match task {
+                        Ok(task) => {
+                            let boxed_task;
+                            ModelToTask!(task => boxed_task);
+                            match boxed_task {
+                                Some(task) => {
+                                    let o = Self::send_executor_execute_message(executor_sender.clone(), task).await.await.unwrap().unwrap();
+                                    resp.send(Ok(o));
+                                }
+                                None => {
+
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            resp.send(Err(e));
+                        }
+                    }
                 }
             }
         }
@@ -148,7 +177,7 @@ impl Reactor {
             .await;
         return rx.await.unwrap();
     }
-    async fn send_executor_execute_message(
+    pub async fn send_executor_execute_message(
         sender: ExecutorSender,
         task: BoxedTask,
     ) -> tokio::sync::oneshot::Receiver<Result<BoxedStream, TaskError>> {
