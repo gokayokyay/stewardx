@@ -18,10 +18,13 @@ impl Executor {
         while let Some(message) = rx.recv().await {
             match message {
                 ExecutorMessage::Execute { task, resp } => {
-                    tokio::spawn(async move {
+                    let task = tokio::spawn(async move {
                         let result = Self::execute(task).await;
                         resp.send(result);
                     });
+                    // Reactor panics because of dropped response.
+                    // To truly abort the task we need to store its resp too
+                    // task.abort();
                 }
             }
         }

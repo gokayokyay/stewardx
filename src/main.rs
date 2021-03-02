@@ -41,6 +41,8 @@ async fn main() {
     let (sv_tx, mut sv_rx) = tokio::sync::mpsc::channel(32);
 
     tokio::spawn(async {
+        // let task = CmdTask::new(uuid::Uuid::new_v4(), Box::new("/bin/bash temp.sh".to_string()));
+        // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(task), "Every(30 * * * * * *)".to_string())).await;
         let mut db_manager = db::DBManager::new(pool, db_rx);
         db_manager.listen().await;
     });
