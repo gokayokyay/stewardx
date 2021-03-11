@@ -11,6 +11,10 @@ pub enum ServerMessage {
     EXECUTE_TASK {
         task_id: Uuid,
         resp: OneShotMessageResponse<anyhow::Result<BoxedStream>>,
+    },
+    ABORT_TASK {
+        task_id: Uuid,
+        resp: OneShotMessageResponse<bool>
     }
 }
 
@@ -18,7 +22,8 @@ impl ServerMessage {
     pub fn get_type<'a>(&'a self) -> &'a str {
         return match self {
             ServerMessage::GET_TASKS { .. } => "GET_TASKS",
-            ServerMessage::EXECUTE_TASK { .. } => "EXECUTE_TASK"
+            ServerMessage::EXECUTE_TASK { .. } => "EXECUTE_TASK",
+            ServerMessage::ABORT_TASK { .. } => "ABORT_TASK"
         };
     }
 }

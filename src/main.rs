@@ -46,9 +46,10 @@ async fn main() {
         let mut db_manager = db::DBManager::new(pool, db_rx);
         db_manager.listen().await;
     });
+    let inner_ex_tx = ex_tx.clone();
     tokio::spawn(async {
-        let executor = Executor {};
-        executor.listen(ex_rx).await;
+        let mut executor = Executor { task_handles: Vec::default() };
+        executor.listen(ex_rx, inner_ex_tx).await;
     });
 
     tokio::spawn(async move {

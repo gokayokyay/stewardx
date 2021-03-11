@@ -7,6 +7,7 @@ use chrono::Utc;
 use futures::StreamExt;
 use tokio::sync::{self, Mutex};
 use tracing::{info, instrument, warn};
+use uuid::Uuid;
 
 use crate::{
     db::DBMessage,
@@ -78,8 +79,18 @@ impl Reactor {
                     let tw_sender = self.task_watcher_sender.clone();
                     let db_sender = self.db_sender.clone();
                     let db_report_sender = self.db_sender.clone();
+                    let exec_sender = self.executor_sender.clone();
                     tokio::spawn(async move {
-                        let result = result.await.unwrap();
+                        let result = match result.await {
+                            Ok(r) => r,
+                            Err(e) => {
+                                // Receiver dropped
+                                let report = ExecutionReport::new(id, false, Vec::default());
+                                Self::send_db_create_execution_report_message(db_report_sender, report)
+                                    .await;
+                                return;
+                            }
+                        };
                         let (o_tx, mut o_rx) = tokio::sync::broadcast::channel(128);
                         let (er_tx, er_rx) = tokio::sync::oneshot::channel();
                         tw_sender
@@ -93,6 +104,8 @@ impl Reactor {
                         while let Ok(output) = o_rx.recv().await {
                             o_emitter.send(output);
                         }
+                        // If there's no output handle it means that task has finished execution
+                        Self::send_executor_exec_finished_message(exec_sender, id).await;
                         let report = er_rx.await.unwrap();
                         Self::send_db_create_execution_report_message(db_report_sender, report)
                             .await;
@@ -162,6 +175,9 @@ impl Reactor {
                         }
                     }
                 }
+                ServerMessage::ABORT_TASK { task_id, resp } => {
+                    Self::send_executor_abort_message(executor_sender.clone(), task_id).await;
+                }
             }
         }
     }
@@ -187,6 +203,26 @@ impl Reactor {
         let message = ExecutorMessage::Execute { task, resp: t_tx };
         sender.send(message).await;
         return t_rx;
+    }
+    pub async fn send_executor_abort_message(
+        sender: ExecutorSender,
+        id: Uuid
+    ) -> tokio::sync::oneshot::Receiver<bool> {
+        info!("Sending Abort message to Executor for task {}", id);
+        let (t_tx, t_rx) = tokio::sync::oneshot::channel();
+        let message = ExecutorMessage::Abort { id, resp: t_tx };
+        sender.send(message).await;
+        return t_rx;
+    }
+    pub async fn send_executor_exec_finished_message(
+        sender: ExecutorSender,
+        id: Uuid
+    ) {
+        info!("Sending ExecutionFinished message to Executor for task {}", id);
+        // let (t_tx, t_rx) = tokio::sync::oneshot::channel();
+        let message = ExecutorMessage::ExecutionFinished { id };
+        sender.send(message).await;
+        // return t_rx;
     }
     async fn send_db_create_execution_report_message(
         sender: DBSender,

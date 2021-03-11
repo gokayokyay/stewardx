@@ -2,8 +2,10 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use std::sync::Arc;
+use tokio::{io::{AsyncBufReadExt, BufReader}, process::Child};
 use tokio_stream::wrappers::LinesStream;
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use crate::{
@@ -15,6 +17,8 @@ use crate::{
 pub struct CmdTask {
     pub id: Uuid,
     pub command: Box<String>,
+    #[serde(skip)]
+    child_handle: Arc<Mutex<Option<Child>>>
 }
 
 impl CmdTask {
@@ -26,7 +30,7 @@ impl CmdTask {
             id = %id_literal,
             command = %cmd_literal
         );
-        Self { id, command }
+        Self { id, command, child_handle: Arc::default() }
     }
     pub fn parse_cmd(id: &uuid::Uuid, command: &str) -> Result<(String, Vec<String>), TaskError> {
         let mut s = command.split(" ");
@@ -51,7 +55,7 @@ impl ToString for CmdTask {
 }
 #[async_trait]
 impl Executable for CmdTask {
-    async fn exec(&self) -> Result<BoxedStream, TaskError> {
+    async fn exec(&mut self) -> Result<BoxedStream, TaskError> {
         let (prog, args) = CmdTask::parse_cmd(&self.id, &self.command).unwrap();
         let mut cmd = tokio::process::Command::new(prog);
         for arg in args {
@@ -65,7 +69,12 @@ impl Executable for CmdTask {
                 // return Err(TaskError::TaskExecution(self.get_id(), e.to_string()));
             }
         };
-        let stdout = match child.stdout.take() {
+        self.child_handle = Arc::new(Mutex::new(Some(child)));
+        let child = self.child_handle.clone();
+        let mut child = child.lock().await;
+        let child = child.as_mut().unwrap();
+        let child_out = &mut child.stdout;
+        let stdout = match child_out.take() {
             Some(s) => s,
             None => {
                 panic!();
@@ -84,6 +93,20 @@ impl Executable for CmdTask {
 
     fn get_type(&self) -> String {
         Self::get_task_type()
+    }
+
+    async fn abort(&mut self) -> bool {
+        // println!("{:?}", self);
+        let handle = &mut self.child_handle.lock().await;
+        let handle = handle.as_mut().unwrap();
+        match handle.kill().await {
+            Ok(_) => {
+                return true
+            }
+            Err(_) => {
+                return false
+            }
+        };
     }
 }
 

@@ -6,7 +6,8 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait Executable: Debug + ToString {
-    async fn exec(&self) -> Result<BoxedStream, TaskError>;
+    async fn exec(&mut self) -> Result<BoxedStream, TaskError>;
+    async fn abort(&mut self) -> bool;
     fn get_id(&self) -> uuid::Uuid;
     fn get_type(&self) -> String;
 }

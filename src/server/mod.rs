@@ -6,7 +6,7 @@ use routerify::{Middleware, RequestInfo, Router, RouterService, ext::RequestExt}
 
 mod messages;
 mod handlers;
-use handlers::{get_tasks, exec_task};
+use handlers::{abort_task, exec_task, get_tasks};
 pub use messages::ServerMessage;
 use tracing::info;
 
@@ -26,6 +26,7 @@ impl Server {
             // .middleware(Middleware::pre(logger))
             .get("/tasks", get_tasks)
             .post("/tasks/execute", exec_task)
+            .post("/tasks/abort", abort_task)
             // .err_handler_with_info(error_handler)
             .build()
             .unwrap();
