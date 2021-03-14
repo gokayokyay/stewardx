@@ -32,21 +32,20 @@ impl Executor {
                 ExecutorMessage::Execute { mut task, resp } => {
                     let id = task.get_id();
                     let (abort_tx, abort_rx) = tokio::sync::oneshot::channel::<bool>();
-                    let (status_tx, status_rx) = tokio::sync::oneshot::channel::<bool>();
-                    println!("handle-begin");
+                    info!("Executing task: {}", id);
                     let handle = tokio::spawn(async move {
                         let result = Self::execute(&mut task).await;
                         resp.send(result);
                         // task.abort().await;
                         // We can listen for the abort oneshot
-                        println!("waiting abort - start");
+
                         if let Ok(_) = abort_rx.await {
                             info!("Aborting task {}", id);
                             println!("Aborting task {}", id);
                             task.abort().await;
                             // if let Ok(_) = inner_tx.send(ExecutorMessage::Abort { id }).await {}
                         }
-                        println!("waiting abort - end");
+                        info!("Aborting timespan finished.");
                     });
                     // println!("handle-end {}", task.get_id());
                     self.task_handles.push(TaskHandle {

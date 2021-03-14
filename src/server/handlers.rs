@@ -107,10 +107,15 @@ pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow
                 task_id,
                 resp: tx,
             }).await;
-            if let Ok(_) = rx.await {
-                println!("Abort RX - server waiting success");
+            if let Ok(result) = rx.await {
+                let status;
+                if result {
+                    status = "success"
+                } else {
+                    status = "error"
+                }
                 return response_json!(body: &serde_json::json!({
-                    "status": "success"
+                    "status": status
                 }));
             } else {
                 println!("Abort RX - server waiting failed");

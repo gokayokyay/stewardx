@@ -176,7 +176,16 @@ impl Reactor {
                     }
                 }
                 ServerMessage::AbortTask { task_id, resp } => {
-                    Self::send_executor_abort_message(executor_sender.clone(), task_id).await;
+                    let rx = Self::send_executor_abort_message(executor_sender.clone(), task_id).await;
+                    match rx.await {
+                        Ok(result) => {
+                            resp.send(result);
+                        }
+                        Err(e) => {
+                            info!("Non critical error while aborting task {}", e);
+                            resp.send(false);
+                        }
+                    };
                 }
             }
         }
