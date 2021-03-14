@@ -8,44 +8,44 @@ use crate::{
 
 #[derive(Debug)]
 pub enum DBMessage {
-    GET_TASK {
+    GetTask {
         id: Uuid,
         resp: DBMessageResponse<TaskModel>,
     },
-    GET_TASKS {
+    GetTasks {
         offset: Option<i64>,
         resp: DBMessageResponse<Vec<TaskModel>>,
     },
-    CREATE_TASK {
+    CreateTask {
         task: TaskModel,
         resp: DBMessageResponse<TaskModel>,
     },
-    GET_SCHEDULED_TASKS {
+    GetScheduledTasks {
         when: NaiveDateTime,
         resp: DBMessageResponse<Vec<TaskModel>>,
     },
-    UPDATE_NEXT_EXECUTION {
+    UpdateNextExecution {
         id: Uuid,
         next_execution: Option<NaiveDateTime>,
         resp: DBMessageResponse<TaskModel>,
     },
-    UPTADE_TASK {
+    UptadeTask {
         task: TaskModel,
         resp: DBMessageResponse<TaskModel>,
     },
-    DELETE_TASK {
+    DeleteTask {
         id: Uuid,
         resp: DBMessageResponse<TaskModel>,
     },
-    CREATE_ERROR {
+    CreateError {
         error: TaskError,
         resp: DBMessageResponse<TaskError>,
     },
-    CREATE_EXECUTION_REPORT {
+    CreateExecutionReport {
         report: ExecutionReport,
         resp: DBMessageResponse<ExecutionReport>,
     },
-    GET_EXECUTION_REPORTS {
+    GetExecutionReports {
         task_id: Uuid,
         offset: Option<i64>,
         resp: DBMessageResponse<Vec<ExecutionReport>>,
@@ -55,22 +55,22 @@ pub enum DBMessage {
 impl DBMessage {
     pub fn get_type<'a>(&'a self) -> &'a str {
         match self {
-            DBMessage::GET_TASK { .. } => {
-                return "GET_TASK";
+            DBMessage::GetTask { .. } => {
+                return "GetTask";
             }
-            DBMessage::GET_TASKS { .. } => "GET_TASKS",
-            DBMessage::CREATE_TASK { .. } => {
-                return "CREATE_TASK";
+            DBMessage::GetTasks { .. } => "GetTasks",
+            DBMessage::CreateTask { .. } => {
+                return "CreateTask";
             }
-            DBMessage::GET_SCHEDULED_TASKS { .. } => {
-                return "GET_SCHEDULED_TASKS";
+            DBMessage::GetScheduledTasks { .. } => {
+                return "GetScheduledTasks";
             }
-            DBMessage::UPDATE_NEXT_EXECUTION { .. } => return "UPDATE_NEXT_EXECUTION",
-            DBMessage::CREATE_ERROR { .. } => return "CREATE_ERROR",
-            DBMessage::UPTADE_TASK { .. } => return "UPDATE_TASK",
-            DBMessage::DELETE_TASK { .. } => return "DELETE_TASK",
-            DBMessage::CREATE_EXECUTION_REPORT { .. } => "CREATE_EXECUTION_REPORT",
-            DBMessage::GET_EXECUTION_REPORTS { .. } => "GET_EXECUTION_REPORTS",
+            DBMessage::UpdateNextExecution { .. } => return "UpdateNextExecution",
+            DBMessage::CreateError { .. } => return "CreateError",
+            DBMessage::UptadeTask { .. } => return "UptadeTask",
+            DBMessage::DeleteTask { .. } => return "DeleteTask",
+            DBMessage::CreateExecutionReport { .. } => "CreateExecutionReport",
+            DBMessage::GetExecutionReports { .. } => "GetExecutionReports",
         }
     }
 }

@@ -34,7 +34,7 @@ pub async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Err
     let (tx, rx) = tokio::sync::oneshot::channel();
     let sender = req.data::<Sender<ServerMessage>>().unwrap();
     sender
-        .send(ServerMessage::GET_TASKS {
+        .send(ServerMessage::GetTasks {
             offset: None,
             resp: tx,
         })
@@ -68,7 +68,7 @@ pub async fn exec_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow:
         if let Ok(json_value) = serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error> {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             let task_id = json_value.task_id;
-            sender.send(ServerMessage::EXECUTE_TASK {
+            sender.send(ServerMessage::ExecuteTask {
                 task_id,
                 resp: tx,
             }).await;
@@ -103,7 +103,7 @@ pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow
         if let Ok(json_value) = serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error> {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             let task_id = json_value.task_id;
-            sender.send(ServerMessage::ABORT_TASK {
+            sender.send(ServerMessage::AbortTask {
                 task_id,
                 resp: tx,
             }).await;

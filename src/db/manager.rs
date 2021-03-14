@@ -288,23 +288,23 @@ impl DBManager {
             let mut connection = self.pool.acquire().await.unwrap();
             tokio::spawn(async move {
                 match message {
-                    DBMessage::GET_TASK { id, resp } => {
+                    DBMessage::GetTask { id, resp } => {
                         let task = sqlx_to_anyhow!(Self::get_task(&mut connection, id).await);
                         resp.send(task);
                     }
-                    DBMessage::GET_TASKS { offset, resp } => {
+                    DBMessage::GetTasks { offset, resp } => {
                         let tasks = sqlx_to_anyhow!(Self::get_tasks(&mut connection, offset).await);
                         resp.send(tasks);
                     }
-                    DBMessage::CREATE_TASK { task, resp } => {
+                    DBMessage::CreateTask { task, resp } => {
                         let task = sqlx_to_anyhow!(Self::create_task(&mut connection, task).await);
                         resp.send(task);
                     }
-                    DBMessage::GET_SCHEDULED_TASKS { when, resp } => {
+                    DBMessage::GetScheduledTasks { when, resp } => {
                         let tasks = sqlx_to_anyhow!(Self::get_scheduled_tasks(&mut connection, when).await);
                         resp.send(tasks);
                     }
-                    DBMessage::UPDATE_NEXT_EXECUTION {
+                    DBMessage::UpdateNextExecution {
                         id,
                         next_execution,
                         resp,
@@ -312,23 +312,23 @@ impl DBManager {
                         let task = sqlx_to_anyhow!(Self::update_next_execution(&mut connection, id, next_execution).await);
                         resp.send(task);
                     }
-                    DBMessage::CREATE_ERROR { error, resp } => {
+                    DBMessage::CreateError { error, resp } => {
                         let error = sqlx_to_anyhow!(Self::create_error(&mut connection, error).await);
                         resp.send(error);
                     }
-                    DBMessage::UPTADE_TASK { task, resp } => {
+                    DBMessage::UptadeTask { task, resp } => {
                         let task = sqlx_to_anyhow!(Self::update_task(&mut connection, task).await);
                         resp.send(task);
                     }
-                    DBMessage::DELETE_TASK { id, resp } => {
+                    DBMessage::DeleteTask { id, resp } => {
                         let task = sqlx_to_anyhow!(Self::delete_task(&mut connection, id).await);
                         resp.send(task);
                     }
-                    DBMessage::CREATE_EXECUTION_REPORT { report, resp } => {
+                    DBMessage::CreateExecutionReport { report, resp } => {
                         let report = sqlx_to_anyhow!(Self::create_execution_report(&mut connection, report).await);
                         resp.send(report);
                     }
-                    DBMessage::GET_EXECUTION_REPORTS {
+                    DBMessage::GetExecutionReports {
                         task_id,
                         offset,
                         resp,

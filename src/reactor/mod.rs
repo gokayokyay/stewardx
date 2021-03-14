@@ -94,7 +94,7 @@ impl Reactor {
                         let (o_tx, mut o_rx) = tokio::sync::broadcast::channel(128);
                         let (er_tx, er_rx) = tokio::sync::oneshot::channel();
                         tw_sender
-                            .send(crate::tasks::TaskWatcherMessage::WATCH_EXECUTION {
+                            .send(crate::tasks::TaskWatcherMessage::WatchExecution {
                                 task_id: id,
                                 exec_process: result,
                                 output_resp: o_tx,
@@ -118,7 +118,7 @@ impl Reactor {
                     task_model.last_exec_succeeded = true;
                     let (db_tx, _) = tokio::sync::oneshot::channel();
                     db_sender
-                        .send(DBMessage::UPTADE_TASK {
+                        .send(DBMessage::UptadeTask {
                             task: task_model,
                             resp: db_tx,
                         })
@@ -136,10 +136,10 @@ impl Reactor {
         while let Some(message) = rx.recv().await {
             info!("Got a message from server: {}", message.get_type());
             match message {
-                ServerMessage::GET_TASKS { offset, resp } => {
+                ServerMessage::GetTasks { offset, resp } => {
                     let (db_tx, db_rx) = tokio::sync::oneshot::channel();
                     db_sender
-                        .send(DBMessage::GET_TASKS {
+                        .send(DBMessage::GetTasks {
                             offset,
                             resp: db_tx,
                         })
@@ -147,10 +147,10 @@ impl Reactor {
                     let result = db_rx.await.unwrap();
                     resp.send(result);
                 },
-                ServerMessage::EXECUTE_TASK { task_id, resp } => {
+                ServerMessage::ExecuteTask { task_id, resp } => {
                     let (db_tx, db_rx) = tokio::sync::oneshot::channel();
                     db_sender
-                        .send(DBMessage::GET_TASK {
+                        .send(DBMessage::GetTask {
                             id: task_id,
                             resp: db_tx,
                         })
@@ -175,7 +175,7 @@ impl Reactor {
                         }
                     }
                 }
-                ServerMessage::ABORT_TASK { task_id, resp } => {
+                ServerMessage::AbortTask { task_id, resp } => {
                     Self::send_executor_abort_message(executor_sender.clone(), task_id).await;
                 }
             }
@@ -189,7 +189,7 @@ impl Reactor {
         );
         let (tx, rx) = sync::oneshot::channel();
         self.db_sender
-            .send(DBMessage::GET_SCHEDULED_TASKS { when, resp: tx })
+            .send(DBMessage::GetScheduledTasks { when, resp: tx })
             .await;
         return rx.await.unwrap();
     }
@@ -235,7 +235,7 @@ impl Reactor {
         );
         let (tx, rx) = sync::oneshot::channel();
         sender
-            .send(DBMessage::CREATE_EXECUTION_REPORT { resp: tx, report })
+            .send(DBMessage::CreateExecutionReport { resp: tx, report })
             .await;
         return rx.await.unwrap();
     }

@@ -10,7 +10,7 @@ pub enum TaskWatcherMessage {
     // TASK_EXECUTION_SUCCESSFUL {
     //     output_stream: BoxedStream,
     // },
-    WATCH_EXECUTION {
+    WatchExecution {
         task_id: Uuid,
         exec_process: Result<BoxedStream, TaskError>,
         output_resp: OutputSender,
@@ -21,7 +21,7 @@ pub enum TaskWatcherMessage {
 impl TaskWatcherMessage {
     pub fn get_type<'a>(&'a self) -> &'a str {
         return match self {
-            TaskWatcherMessage::WATCH_EXECUTION { .. } => "WATCH_EXECUTION",
+            TaskWatcherMessage::WatchExecution { .. } => "WatchExecution",
         };
     }
 }

@@ -4,15 +4,15 @@ use crate::{models::TaskModel, traits::BoxedStream, types::OneShotMessageRespons
 
 // #[derive(Debug)]
 pub enum ServerMessage {
-    GET_TASKS {
+    GetTasks {
         offset: Option<i64>,
         resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>,
     },
-    EXECUTE_TASK {
+    ExecuteTask {
         task_id: Uuid,
         resp: OneShotMessageResponse<anyhow::Result<BoxedStream>>,
     },
-    ABORT_TASK {
+    AbortTask {
         task_id: Uuid,
         resp: OneShotMessageResponse<bool>
     }
@@ -21,9 +21,9 @@ pub enum ServerMessage {
 impl ServerMessage {
     pub fn get_type<'a>(&'a self) -> &'a str {
         return match self {
-            ServerMessage::GET_TASKS { .. } => "GET_TASKS",
-            ServerMessage::EXECUTE_TASK { .. } => "EXECUTE_TASK",
-            ServerMessage::ABORT_TASK { .. } => "ABORT_TASK"
+            ServerMessage::GetTasks { .. } => "GetTasks",
+            ServerMessage::ExecuteTask { .. } => "ExecuteTask",
+            ServerMessage::AbortTask { .. } => "AbortTask"
         };
     }
 }

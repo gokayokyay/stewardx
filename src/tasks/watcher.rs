@@ -15,7 +15,7 @@ impl TaskWatcher {
             info!("Got a message {}", message.get_type());
             tokio::spawn(async move {
                 match message {
-                    TaskWatcherMessage::WATCH_EXECUTION {
+                    TaskWatcherMessage::WatchExecution {
                         task_id,
                         exec_process,
                         output_resp,
