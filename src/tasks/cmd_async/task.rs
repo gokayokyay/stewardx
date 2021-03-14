@@ -3,9 +3,12 @@ use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use std::sync::Arc;
-use tokio::{io::{AsyncBufReadExt, BufReader}, process::Child};
-use tokio_stream::wrappers::LinesStream;
 use tokio::sync::Mutex;
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    process::Child,
+};
+use tokio_stream::wrappers::LinesStream;
 use uuid::Uuid;
 
 use crate::{
@@ -18,7 +21,7 @@ pub struct CmdTask {
     pub id: Uuid,
     pub command: Box<String>,
     #[serde(skip)]
-    child_handle: Arc<Mutex<Option<Child>>>
+    child_handle: Arc<Mutex<Option<Child>>>,
 }
 
 impl CmdTask {
@@ -30,7 +33,11 @@ impl CmdTask {
             id = %id_literal,
             command = %cmd_literal
         );
-        Self { id, command, child_handle: Arc::default() }
+        Self {
+            id,
+            command,
+            child_handle: Arc::default(),
+        }
     }
     pub fn parse_cmd(id: &uuid::Uuid, command: &str) -> Result<(String, Vec<String>), TaskError> {
         let mut s = command.split(" ");
@@ -62,7 +69,7 @@ impl Executable for CmdTask {
             cmd.arg(arg);
         }
         cmd.stdout(Stdio::piped());
-        let mut child = match cmd.spawn() {
+        let child = match cmd.spawn() {
             Ok(c) => c,
             Err(_e) => {
                 panic!();
@@ -100,12 +107,8 @@ impl Executable for CmdTask {
         let handle = &mut self.child_handle.lock().await;
         let handle = handle.as_mut().unwrap();
         match handle.kill().await {
-            Ok(_) => {
-                return true
-            }
-            Err(_) => {
-                return false
-            }
+            Ok(_) => return true,
+            Err(_) => return false,
         };
     }
 }

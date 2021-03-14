@@ -14,8 +14,8 @@ pub enum ServerMessage {
     },
     AbortTask {
         task_id: Uuid,
-        resp: OneShotMessageResponse<bool>
-    }
+        resp: OneShotMessageResponse<bool>,
+    },
 }
 
 impl ServerMessage {
@@ -23,7 +23,7 @@ impl ServerMessage {
         return match self {
             ServerMessage::GetTasks { .. } => "GetTasks",
             ServerMessage::ExecuteTask { .. } => "ExecuteTask",
-            ServerMessage::AbortTask { .. } => "AbortTask"
+            ServerMessage::AbortTask { .. } => "AbortTask",
         };
     }
 }

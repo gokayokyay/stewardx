@@ -1,11 +1,11 @@
-use tokio::sync::mpsc::Sender;
+use hyper::Server as HyperServer;
 use std::{net::SocketAddr, str::FromStr};
-use hyper::{Server as HyperServer};
+use tokio::sync::mpsc::Sender;
 
-use routerify::{Middleware, RequestInfo, Router, RouterService, ext::RequestExt};
+use routerify::{Router, RouterService};
 
-mod messages;
 mod handlers;
+mod messages;
 use handlers::{abort_task, exec_task, get_tasks};
 pub use messages::ServerMessage;
 use tracing::info;
@@ -31,7 +31,8 @@ impl Server {
             .build()
             .unwrap();
         let service = RouterService::new(router).unwrap();
-        let addr = SocketAddr::from_str(format!("{}:{}", host, port).as_str()).expect("Invalid host or port.");
+        let addr = SocketAddr::from_str(format!("{}:{}", host, port).as_str())
+            .expect("Invalid host or port.");
         let server = HyperServer::bind(&addr).serve(service);
         info!("Server started listening on {}", addr);
         if let Err(err) = server.await {

@@ -30,7 +30,7 @@ impl TaskWatcher {
                             let exec_report = ExecutionReport::new(task_id, true, output_vec);
                             resp.send(exec_report);
                         }
-                        Err(e) => {}
+                        Err(_e) => {}
                     },
                 }
             });

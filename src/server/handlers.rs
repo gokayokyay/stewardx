@@ -1,11 +1,9 @@
-use futures::TryStreamExt;
-use routerify::ext::RequestExt;
-use tokio::sync::mpsc::Sender;
-use hyper::{Body, Request, Response, Server as HyperServer, StatusCode, body::{Bytes, HttpBody}};
-use tokio_stream::StreamExt;
-use serde::{Serialize, Deserialize};
-use uuid::Uuid;
 use super::ServerMessage;
+use hyper::{body::HttpBody, Body, Request, Response};
+use routerify::ext::RequestExt;
+use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::Sender;
+use uuid::Uuid;
 
 #[macro_export]
 macro_rules! response_json {
@@ -13,20 +11,20 @@ macro_rules! response_json {
         match hyper::Response::builder()
             .header(hyper::header::CONTENT_TYPE, "application/json")
             .body(serde_json::to_string($body).unwrap().into())
-            {
-                Ok(x) => Ok(x),
-                Err(e) => Err(anyhow::anyhow!(e.to_string()))
-            }
+        {
+            Ok(x) => Ok(x),
+            Err(e) => Err(anyhow::anyhow!(e.to_string())),
+        }
     };
     (status: $status:expr, body: $body:expr) => {
         match hyper::Response::builder()
             .header(hyper::header::CONTENT_TYPE, "application/json")
             .status($status)
             .body(serde_json::to_string($body).unwrap().into())
-            {
-                Ok(x) => Ok(x),
-                Err(e) => Err(anyhow::anyhow!(e.to_string()))
-            }
+        {
+            Ok(x) => Ok(x),
+            Err(e) => Err(anyhow::anyhow!(e.to_string())),
+        }
     };
 }
 
@@ -39,7 +37,7 @@ pub async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Err
             resp: tx,
         })
         .await;
-    
+
     let result = rx.await.unwrap();
     match result {
         Ok(result) => response_json!(body: &result),
@@ -54,32 +52,37 @@ pub async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Err
     }
 }
 
-
 /// End point to execute a task
 /// "task_id" parameter is required
 pub async fn exec_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
     #[derive(Debug, Serialize, Deserialize)]
     struct RequestBody {
-        task_id: Uuid
+        task_id: Uuid,
     }
     let (tx, rx) = tokio::sync::oneshot::channel();
     let body = req.body_mut();
     if let Some(Ok(body)) = body.data().await {
-        if let Ok(json_value) = serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error> {
+        if let Ok(json_value) =
+            serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error>
+        {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             let task_id = json_value.task_id;
-            sender.send(ServerMessage::ExecuteTask {
-                task_id,
-                resp: tx,
-            }).await;
+            sender
+                .send(ServerMessage::ExecuteTask { task_id, resp: tx })
+                .await;
             if let Ok(Ok(_)) = rx.await {
-                return response_json!(body: &serde_json::json!({
-                    "status": "success"
-                }));
+                return response_json!(
+                    body: &serde_json::json!({
+                         "status": "success"
+                     })
+                );
             } else {
-                return response_json!(status: hyper::StatusCode::NOT_FOUND, body: &serde_json::json!({
-                    "status": "error"
-                }));
+                return response_json!(
+                    status: hyper::StatusCode::NOT_FOUND,
+                    body: &serde_json::json!({
+                         "status": "error"
+                     })
+                );
             }
         }
     };
@@ -95,18 +98,19 @@ pub async fn exec_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow:
 pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
     #[derive(Debug, Serialize, Deserialize)]
     struct RequestBody {
-        task_id: Uuid
+        task_id: Uuid,
     }
     let (tx, rx) = tokio::sync::oneshot::channel();
     let body = req.body_mut();
     if let Some(Ok(body)) = body.data().await {
-        if let Ok(json_value) = serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error> {
+        if let Ok(json_value) =
+            serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error>
+        {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             let task_id = json_value.task_id;
-            sender.send(ServerMessage::AbortTask {
-                task_id,
-                resp: tx,
-            }).await;
+            sender
+                .send(ServerMessage::AbortTask { task_id, resp: tx })
+                .await;
             if let Ok(result) = rx.await {
                 let status;
                 if result {
@@ -114,14 +118,15 @@ pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow
                 } else {
                     status = "error"
                 }
-                return response_json!(body: &serde_json::json!({
-                    "status": status
-                }));
+                return response_json!(body: &serde_json::json!({ "status": status }));
             } else {
                 println!("Abort RX - server waiting failed");
-                return response_json!(status: hyper::StatusCode::NOT_FOUND, body: &serde_json::json!({
-                    "status": "error"
-                }));
+                return response_json!(
+                    status: hyper::StatusCode::NOT_FOUND,
+                    body: &serde_json::json!({
+                         "status": "error"
+                     })
+                );
             }
         }
     }

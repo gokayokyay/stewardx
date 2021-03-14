@@ -3,9 +3,9 @@ use executor::Executor;
 use models::{OutputModel, TaskModel};
 use reactor::Reactor;
 use server::Server;
-use tokio::task::spawn_blocking;
 use std::{str::FromStr, sync::Arc};
 use tasks::{CmdTask, TaskWatcher};
+use tokio::task::spawn_blocking;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
@@ -51,7 +51,9 @@ async fn main() {
     });
     let inner_ex_tx = ex_tx.clone();
     tokio::spawn(async {
-        let mut executor = Executor { task_handles: Vec::default() };
+        let mut executor = Executor {
+            task_handles: Vec::default(),
+        };
         executor.listen(ex_rx, inner_ex_tx).await;
     });
 

@@ -36,6 +36,7 @@ pub enum FrequencyDeserializeError {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Frequency {
     Every(Box<String>),
+    Hook,
     AfterInterval,
 }
 
@@ -55,6 +56,7 @@ impl Frequency {
                     .next();
             }
             Frequency::AfterInterval => {}
+            Frequency::Hook => {}
         }
         return None;
     }
@@ -65,6 +67,7 @@ impl ToString for Frequency {
         match &self {
             Frequency::Every(s) => return format!("Every({})", s),
             Frequency::AfterInterval => return String::from("AfterInterval"),
+            Frequency::Hook => return String::from("Hook"),
         }
     }
 }

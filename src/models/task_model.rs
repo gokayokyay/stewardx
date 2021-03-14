@@ -1,4 +1,4 @@
-use chrono::{Duration, NaiveDateTime, Utc};
+use chrono::{Duration, NaiveDateTime};
 use serde::Serialize;
 use tracing::info;
 use uuid::Uuid;
@@ -41,6 +41,7 @@ impl TaskModel {
                 let next_execution = *last_execution + Duration::seconds(*interval);
                 Some(next_execution)
             }
+            Frequency::Hook => None,
         };
         return next_execution;
     }

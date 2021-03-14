@@ -1,10 +1,5 @@
-use std::{
-    ops::{Deref, DerefMut},
-    sync::Arc,
-};
+use std::sync::Arc;
 
-use chrono::Utc;
-use futures::StreamExt;
 use tokio::sync::{self, Mutex};
 use tracing::{info, instrument, warn};
 use uuid::Uuid;
@@ -12,13 +7,12 @@ use uuid::Uuid;
 use crate::{
     db::DBMessage,
     executor::ExecutorMessage,
-    models::{ExecutionReport, OutputModel, TaskError, TaskModel},
+    models::{ExecutionReport, TaskError, TaskModel},
     now,
-    server::{self, ServerMessage},
+    server::ServerMessage,
     traits::BoxedStream,
     types::{
-        BoxedTask, DBSender, ExecutorSender, OutputEmitter, OutputSender, ServerReceiver,
-        TaskWatcherSender,
+        BoxedTask, DBSender, ExecutorSender, OutputEmitter, ServerReceiver, TaskWatcherSender,
     },
     ModelToTask,
 };
@@ -44,7 +38,7 @@ pub struct Reactor {
 
 impl Reactor {
     pub async fn listen(&mut self) {
-        let mut server_receiver = self.server_receiver.clone();
+        let server_receiver = self.server_receiver.clone();
         let db_sender = self.db_sender.clone();
         let exec_sender = self.executor_sender.clone();
         tokio::spawn(async move {
@@ -83,11 +77,14 @@ impl Reactor {
                     tokio::spawn(async move {
                         let result = match result.await {
                             Ok(r) => r,
-                            Err(e) => {
+                            Err(_e) => {
                                 // Receiver dropped
                                 let report = ExecutionReport::new(id, false, Vec::default());
-                                Self::send_db_create_execution_report_message(db_report_sender, report)
-                                    .await;
+                                Self::send_db_create_execution_report_message(
+                                    db_report_sender,
+                                    report,
+                                )
+                                .await;
                                 return;
                             }
                         };
@@ -132,7 +129,11 @@ impl Reactor {
         name = "Listening for messages from server."
         skip(rx, db_sender)
     )]
-    pub async fn listen_for_server(rx: &mut ServerReceiver, db_sender: DBSender, executor_sender: ExecutorSender) {
+    pub async fn listen_for_server(
+        rx: &mut ServerReceiver,
+        db_sender: DBSender,
+        executor_sender: ExecutorSender,
+    ) {
         while let Some(message) = rx.recv().await {
             info!("Got a message from server: {}", message.get_type());
             match message {
@@ -146,7 +147,7 @@ impl Reactor {
                         .await;
                     let result = db_rx.await.unwrap();
                     resp.send(result);
-                },
+                }
                 ServerMessage::ExecuteTask { task_id, resp } => {
                     let (db_tx, db_rx) = tokio::sync::oneshot::channel();
                     db_sender
@@ -162,7 +163,14 @@ impl Reactor {
                             ModelToTask!(task => boxed_task);
                             match boxed_task {
                                 Some(task) => {
-                                    let o = Self::send_executor_execute_message(executor_sender.clone(), task).await.await.unwrap().unwrap();
+                                    let o = Self::send_executor_execute_message(
+                                        executor_sender.clone(),
+                                        task,
+                                    )
+                                    .await
+                                    .await
+                                    .unwrap()
+                                    .unwrap();
                                     resp.send(Ok(o));
                                 }
                                 None => {
@@ -176,7 +184,8 @@ impl Reactor {
                     }
                 }
                 ServerMessage::AbortTask { task_id, resp } => {
-                    let rx = Self::send_executor_abort_message(executor_sender.clone(), task_id).await;
+                    let rx =
+                        Self::send_executor_abort_message(executor_sender.clone(), task_id).await;
                     match rx.await {
                         Ok(result) => {
                             resp.send(result);
@@ -215,7 +224,7 @@ impl Reactor {
     }
     pub async fn send_executor_abort_message(
         sender: ExecutorSender,
-        id: Uuid
+        id: Uuid,
     ) -> tokio::sync::oneshot::Receiver<bool> {
         info!("Sending Abort message to Executor for task {}", id);
         let (t_tx, t_rx) = tokio::sync::oneshot::channel();
@@ -223,11 +232,11 @@ impl Reactor {
         sender.send(message).await;
         return t_rx;
     }
-    pub async fn send_executor_exec_finished_message(
-        sender: ExecutorSender,
-        id: Uuid
-    ) {
-        info!("Sending ExecutionFinished message to Executor for task {}", id);
+    pub async fn send_executor_exec_finished_message(sender: ExecutorSender, id: Uuid) {
+        info!(
+            "Sending ExecutionFinished message to Executor for task {}",
+            id
+        );
         // let (t_tx, t_rx) = tokio::sync::oneshot::channel();
         let message = ExecutorMessage::ExecutionFinished { id };
         sender.send(message).await;
@@ -237,7 +246,6 @@ impl Reactor {
         sender: DBSender,
         report: ExecutionReport,
     ) -> Result<ExecutionReport, anyhow::Error> {
-        let when = now!();
         info!(
             "Sending CREATE_EXECUTION_REPORT message to DBManager: {}",
             report.task_id

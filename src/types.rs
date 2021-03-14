@@ -1,14 +1,8 @@
-use std::{
-    collections::VecDeque,
-    sync::{Arc, Mutex},
-};
-
 use crate::{
     db::DBMessage, executor::ExecutorMessage, models::OutputModel, server::ServerMessage,
     tasks::TaskWatcherMessage, traits::Executable,
 };
 use futures::Stream;
-use uuid::Uuid;
 
 pub type BoxedStream = Box<dyn Stream<Item = String> + Unpin + Send>;
 pub type ExecutableTask = dyn Executable + Send + Sync;

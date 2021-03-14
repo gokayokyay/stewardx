@@ -43,14 +43,14 @@ impl TaskError {
         return Self::new(
             task_id,
             "InvalidCmd".to_string(),
-            "Invalid command specified.".to_string(),
+            format!("Invalid command specified. Command: {}", command),
         );
     }
     pub fn MalformedSerde(task_id: Uuid, serde_string: String) -> Self {
         return Self::new(
             task_id,
             "MalformedSerde".to_string(),
-            "Task's serde string is malformed.".to_string(),
+            format!("Task's serde string is malformed. Serde: {}", serde_string),
         );
     }
 }

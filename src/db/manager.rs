@@ -1,11 +1,9 @@
 use std::vec;
 
-use chrono::{NaiveDate, NaiveDateTime, Utc};
-use sqlx::{Encode, Pool, pool::PoolConnection, Postgres, Type};
+use chrono::{NaiveDateTime, Utc};
+use sqlx::{pool::PoolConnection, Pool, Postgres};
 use tokio::sync::mpsc::Receiver;
-use tracing::{info, info_span, instrument};
-// use futures::TryStreamExt;
-use sqlx::Row;
+use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::models::{ExecutionReport, TaskError, TaskModel};
@@ -37,7 +35,10 @@ impl DBManager {
             frequency = %task.frequency
         )
     )]
-    pub async fn create_task(conn: &mut Connection, task: TaskModel) -> Result<TaskModel, sqlx::Error> {
+    pub async fn create_task(
+        conn: &mut Connection,
+        task: TaskModel,
+    ) -> Result<TaskModel, sqlx::Error> {
         let row = sqlx::query_as!(TaskModel, r#"
             INSERT INTO steward_tasks
                 ( id, created_at, updated_at, task_type, last_execution, next_execution, serde_string, last_exec_succeeded, frequency, interval, exec_count )
@@ -74,7 +75,10 @@ impl DBManager {
         return task;
     }
     #[instrument(name = "Fetching tasks from database.", skip(conn), fields(offset))]
-    pub async fn get_tasks(conn: &mut Connection, offset: Option<i64>) -> Result<Vec<TaskModel>, sqlx::Error> {
+    pub async fn get_tasks(
+        conn: &mut Connection,
+        offset: Option<i64>,
+    ) -> Result<Vec<TaskModel>, sqlx::Error> {
         let offset = offset.unwrap_or(0);
         let task = sqlx::query_as!(
             TaskModel,
@@ -134,7 +138,10 @@ impl DBManager {
             error
         )
     )]
-    pub async fn create_error(conn: &mut Connection, error: TaskError) -> Result<TaskError, sqlx::Error> {
+    pub async fn create_error(
+        conn: &mut Connection,
+        error: TaskError,
+    ) -> Result<TaskError, sqlx::Error> {
         let row = sqlx::query_as!(
             TaskError,
             r#"
@@ -161,7 +168,10 @@ impl DBManager {
             task_id = %task.id,
         )
     )]
-    pub async fn update_task(conn: &mut Connection, task: TaskModel) -> Result<TaskModel, sqlx::Error> {
+    pub async fn update_task(
+        conn: &mut Connection,
+        task: TaskModel,
+    ) -> Result<TaskModel, sqlx::Error> {
         let row = sqlx::query_as!(TaskModel,
             "UPDATE steward_tasks SET updated_at = $2, serde_string = $3, frequency = $4, interval = $5, last_execution = $6, next_execution = $7, last_exec_succeeded = $8, exec_count = $9 WHERE id = $1 RETURNING *",
             task.id,
@@ -270,12 +280,8 @@ impl DBManager {
 macro_rules! sqlx_to_anyhow {
     ($result: expr) => {
         match $result {
-            Ok(r) => {
-                Ok(r)
-            },
-            Err(e) => {
-                Err(anyhow::anyhow!(e))
-            }
+            Ok(r) => Ok(r),
+            Err(e) => Err(anyhow::anyhow!(e)),
         }
     };
 }
@@ -301,7 +307,8 @@ impl DBManager {
                         resp.send(task);
                     }
                     DBMessage::GetScheduledTasks { when, resp } => {
-                        let tasks = sqlx_to_anyhow!(Self::get_scheduled_tasks(&mut connection, when).await);
+                        let tasks =
+                            sqlx_to_anyhow!(Self::get_scheduled_tasks(&mut connection, when).await);
                         resp.send(tasks);
                     }
                     DBMessage::UpdateNextExecution {
@@ -309,11 +316,14 @@ impl DBManager {
                         next_execution,
                         resp,
                     } => {
-                        let task = sqlx_to_anyhow!(Self::update_next_execution(&mut connection, id, next_execution).await);
+                        let task = sqlx_to_anyhow!(
+                            Self::update_next_execution(&mut connection, id, next_execution).await
+                        );
                         resp.send(task);
                     }
                     DBMessage::CreateError { error, resp } => {
-                        let error = sqlx_to_anyhow!(Self::create_error(&mut connection, error).await);
+                        let error =
+                            sqlx_to_anyhow!(Self::create_error(&mut connection, error).await);
                         resp.send(error);
                     }
                     DBMessage::UptadeTask { task, resp } => {
@@ -325,7 +335,9 @@ impl DBManager {
                         resp.send(task);
                     }
                     DBMessage::CreateExecutionReport { report, resp } => {
-                        let report = sqlx_to_anyhow!(Self::create_execution_report(&mut connection, report).await);
+                        let report = sqlx_to_anyhow!(
+                            Self::create_execution_report(&mut connection, report).await
+                        );
                         resp.send(report);
                     }
                     DBMessage::GetExecutionReports {
@@ -333,7 +345,9 @@ impl DBManager {
                         offset,
                         resp,
                     } => {
-                        let reports = sqlx_to_anyhow!(Self::get_execution_reports(&mut connection, task_id, offset).await);
+                        let reports = sqlx_to_anyhow!(
+                            Self::get_execution_reports(&mut connection, task_id, offset).await
+                        );
                         resp.send(reports);
                     }
                 };

@@ -17,6 +17,6 @@ pub enum ExecutorMessage {
     },
     Abort {
         id: Uuid,
-        resp: OneShotMessageResponse<bool>
-    }
+        resp: OneShotMessageResponse<bool>,
+    },
 }
