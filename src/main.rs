@@ -31,9 +31,12 @@ async fn main() {
     // .with(JsonStorageLayer)
     // .with(formatting_layer);
     set_global_default(subscriber).expect("Failed to set subscriber");
-    let pool = db::connect(&std::env::var("DATABASE_URL").unwrap())
-        .await
-        .unwrap();
+    let pool = match db::connect(&std::env::var("DATABASE_URL").unwrap()).await {
+        Ok(p) => p,
+        Err(e) => {
+            panic!("Database connection failed. Check if your connection URL is correct and your DB is reachable.")
+        }
+    };
     let (db_tx, db_rx) = tokio::sync::mpsc::channel(32);
     let (ex_tx, ex_rx) = tokio::sync::mpsc::channel(32);
     let (tw_tx, tw_rx) = tokio::sync::mpsc::channel(32);
