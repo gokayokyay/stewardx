@@ -3,7 +3,7 @@ mod messages;
 use std::sync::Arc;
 use tokio::sync::{Mutex, oneshot, broadcast};
 
-use crate::{now, executor::ExecutorMessage, db::DBMessage, models::ExecutionReport, tasks::TaskWatcherMessage, ModelToTask, types::{DBSender, ExecutorSender, OutputSender, ReactorReceiver, ReactorSender, ServerReceiver, TaskWatcherSender}};
+use crate::{ModelToTask, db::DBMessage, executor::ExecutorMessage, models::ExecutionReport, now, server::ServerMessage, tasks::TaskWatcherMessage, types::{DBSender, ExecutorSender, OutputSender, ReactorReceiver, ReactorSender, ServerReceiver, TaskWatcherSender}};
 pub use messages::ReactorMessage;
 
 use tracing::{error, info};
@@ -26,13 +26,45 @@ impl Reactor {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
     }
+    pub async fn listen_for_server(receiver: &mut ServerReceiver, inner_sender: ReactorSender) {
+        while let Some(message) = receiver.recv().await {
+            let reactor_message = match message {
+                ServerMessage::GetTasks { offset, resp } => {
+                    ReactorMessage::ServerGetTasks {
+                        offset,
+                        resp,
+                    }
+                }
+                ServerMessage::ExecuteTask { task_id, resp } => {
+                    ReactorMessage::ServerExecuteTask {
+                        task_id,
+                        resp,
+                    }
+                }
+                ServerMessage::AbortTask { task_id, resp } => {
+                    ReactorMessage::ServerAbortTask {
+                        task_id,
+                        resp,
+                    }
+                }
+            };
+            inner_sender.send(reactor_message).await.unwrap_or_default();
+        }
+    }
     pub async fn listen(&mut self, mut receiver: ReactorReceiver) {
         let schedule_sender = self.inner_sender.clone();
+        let inner_sender = self.inner_sender.clone();
         tokio::spawn(async move {
-            Self::schedule(schedule_sender.clone()).await;
+            Self::schedule(schedule_sender).await;
+        });
+        let server_receiver = self.server_receiver.clone();
+        tokio::spawn(async move {
+            let mut server_receiver = server_receiver.lock().await;
+            let server_receiver = &mut *server_receiver;
+            Self::listen_for_server(server_receiver, inner_sender).await;
         });
         while let Some(message) = receiver.recv().await {
-            println!("Received message {}", message.get_type());
+            // println!("Received message {}", message.get_type());
             let db_sender = self.db_sender.clone();
             let executor_sender = self.executor_sender.clone();
             let task_watcher_sender = self.task_watcher_sender.clone();
@@ -68,7 +100,7 @@ impl Reactor {
                                 return;
                             }
                         };
-                        println!("{:?}", task_models);
+                        // println!("{:?}", task_models);
                         let mut tasks = task_models.iter().map(|task| {
                             let boxed_task;
                             ModelToTask!(task => boxed_task);
@@ -118,17 +150,13 @@ impl Reactor {
                         // task_watcher_sender.send(TaskWatcherMessage::WatchExecution {
                             
                         // }).await;
-                        let watch_handler = inner_sender.send(ReactorMessage::WatchExecution {
+                        inner_sender.send(ReactorMessage::WatchExecution {
                             task_id: id,
                             exec_process: Ok(result),
-                        });
-                        // If there's no output handle, then it means the task has finished execution
-                        inner_sender.send(ReactorMessage::ExecutionFinished {
-                            id,
-                            successful: true
                         }).await;
-
-                        watch_handler.await;
+                        inner_sender.send(ReactorMessage::UpdateTaskExecution {
+                            task_id: id
+                        }).await;
                     },
                     ReactorMessage::CreateExecutionReport { report, resp } => {
                         info!("Sending CreateExecutionReport message to DBManager: {}", report.task_id);
@@ -153,30 +181,23 @@ impl Reactor {
                                 model: output
                             }).await;
                         }
+                        inner_sender.send(ReactorMessage::ExecutionFinished {
+                            id: task_id,
+                            should_update: false
+                        }).await;
                     },
                     ReactorMessage::OutputReceived { model } => {
                         output_emitter.send(model);
                     }
-                    ReactorMessage::ExecutionFinished { id, successful } => {
+                    ReactorMessage::ExecutionFinished { id, should_update } => {
                         info!("{}'s execution has finished", id);
                         let message = ExecutorMessage::ExecutionFinished { id };
                         executor_sender.send(message).await;
-                        // Update task
-                        let (db_tx, db_rx) = oneshot::channel();
-                        let _res = db_sender.send(DBMessage::GetTask {
-                            id,
-                            resp: db_tx,
-                        }).await;
-                        // Unwrapping it because we're sure it exists on db possible TODO ?
-                        let mut task_model = db_rx.await.unwrap().unwrap();
-                        task_model.exec_count += 1;
-                        task_model.last_execution = Some(now!());
-                        task_model.next_execution = task_model.calc_next_execution();
-                        let (db_tx, _) = tokio::sync::oneshot::channel();
-                        db_sender.send(DBMessage::UptadeTask {
-                            task: task_model,
-                            resp: db_tx,
-                        }).await;
+                        if should_update {
+                            inner_sender.send(ReactorMessage::UpdateTaskExecution {
+                                task_id: id,
+                            }).await;
+                        }
                     }
                     ReactorMessage::ServerGetTasks { offset, resp } => {
                         let (db_tx, db_rx) = tokio::sync::oneshot::channel();
@@ -222,7 +243,30 @@ impl Reactor {
                             }
                         }
                     }
-                    ReactorMessage::ServerAbortTask { task_id, resp } => {}
+                    ReactorMessage::ServerAbortTask { task_id, resp } => {
+                        executor_sender.send(ExecutorMessage::Abort {
+                            id: task_id,
+                            resp,
+                        }).await;
+                    }
+                    ReactorMessage::UpdateTaskExecution { task_id } => {
+                        // Update task
+                        let (db_tx, db_rx) = oneshot::channel();
+                        let _res = db_sender.send(DBMessage::GetTask {
+                            id: task_id,
+                            resp: db_tx,
+                        }).await;
+                        // Unwrapping it because we're sure it exists on db possible TODO ?
+                        let mut task_model = db_rx.await.unwrap().unwrap();
+                        task_model.exec_count += 1;
+                        task_model.last_execution = Some(now!());
+                        task_model.next_execution = task_model.calc_next_execution();
+                        let (db_tx, _) = tokio::sync::oneshot::channel();
+                        db_sender.send(DBMessage::UpdateTask {
+                            task: task_model,
+                            resp: db_tx,
+                        }).await;
+                    }
                 }
             });
         }

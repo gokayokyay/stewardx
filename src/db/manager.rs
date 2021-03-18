@@ -324,7 +324,7 @@ impl DBManager {
                             sqlx_to_anyhow!(Self::create_error(&mut connection, error).await);
                         resp.send(error);
                     }
-                    DBMessage::UptadeTask { task, resp } => {
+                    DBMessage::UpdateTask { task, resp } => {
                         let task = sqlx_to_anyhow!(Self::update_task(&mut connection, task).await);
                         resp.send(task);
                     }

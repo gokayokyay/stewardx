@@ -10,6 +10,7 @@ use crate::{
 
 use super::ExecutorMessage;
 
+#[derive(Debug)]
 pub struct TaskHandle {
     inner_handle: JoinHandle<()>,
     id: Uuid,
@@ -68,11 +69,13 @@ impl Executor {
                 }
                 ExecutorMessage::ExecutionFinished { id } => {
                     info!("Execution of task: {} is finished", id);
+                    println!("Execution of task: {} is finished", id);
                     if let Some(index) = self.get_handle_index(id) {
                         let _val = self.task_handles.remove(index);
                     }
                 }
                 ExecutorMessage::Abort { id, resp } => {
+                    println!("Got abort {}", id);
                     if self.abort_task(id, resp).await {
                         inner_tx
                             .send(ExecutorMessage::ExecutionFinished { id })
@@ -87,6 +90,7 @@ impl Executor {
         task_id: Uuid,
         resp: tokio::sync::oneshot::Sender<bool>,
     ) -> bool {
+        println!("task handles {:?}", self.task_handles);
         if let Some(index) = self.get_handle_index(task_id) {
             let val = self.task_handles.remove(index);
             val.abort_tx.send(true);

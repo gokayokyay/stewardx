@@ -29,7 +29,7 @@ pub enum DBMessage {
         next_execution: Option<NaiveDateTime>,
         resp: DBMessageResponse<TaskModel>,
     },
-    UptadeTask {
+    UpdateTask {
         task: TaskModel,
         resp: DBMessageResponse<TaskModel>,
     },
@@ -67,7 +67,7 @@ impl DBMessage {
             }
             DBMessage::UpdateNextExecution { .. } => return "UpdateNextExecution",
             DBMessage::CreateError { .. } => return "CreateError",
-            DBMessage::UptadeTask { .. } => return "UptadeTask",
+            DBMessage::UpdateTask { .. } => return "UpdateTask",
             DBMessage::DeleteTask { .. } => return "DeleteTask",
             DBMessage::CreateExecutionReport { .. } => "CreateExecutionReport",
             DBMessage::GetExecutionReports { .. } => "GetExecutionReports",

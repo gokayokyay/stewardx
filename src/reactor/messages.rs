@@ -32,7 +32,7 @@ pub enum ReactorMessage {
     },
     ExecutionFinished {
         id: Uuid,
-        successful: bool
+        should_update: bool
     },
     ServerGetTasks {
         offset: Option<i64>,
@@ -45,6 +45,9 @@ pub enum ReactorMessage {
     ServerAbortTask {
         task_id: Uuid,
         resp: OneShotMessageResponse<bool>
+    },
+    UpdateTaskExecution {
+        task_id: Uuid
     }
 }
 
@@ -63,7 +66,8 @@ impl ReactorMessage {
             ReactorMessage::ExecutionFinished { .. } => "ExecutionFinished",
             ReactorMessage::ServerGetTasks {.. } => "ServerGetTasks",
             ReactorMessage::ServerExecuteTask { .. } => "ServerExecuteTask",
-            ReactorMessage::ServerAbortTask { .. } => "ServerAbortTask"
+            ReactorMessage::ServerAbortTask { .. } => "ServerAbortTask",
+            ReactorMessage::UpdateTaskExecution { .. } => "UpdateTaskExecution"
         }
     }
 }

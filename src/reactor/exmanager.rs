@@ -115,7 +115,7 @@ impl Reactor {
                     task_model.last_exec_succeeded = true;
                     let (db_tx, _) = tokio::sync::oneshot::channel();
                     db_sender
-                        .send(DBMessage::UptadeTask {
+                        .send(DBMessage::UpdateTask {
                             task: task_model,
                             resp: db_tx,
                         })
