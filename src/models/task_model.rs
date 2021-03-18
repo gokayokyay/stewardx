@@ -15,7 +15,6 @@ pub struct TaskModel {
     pub interval: Option<i64>,
     pub last_execution: Option<NaiveDateTime>,
     pub next_execution: Option<NaiveDateTime>,
-    pub last_exec_succeeded: bool,
     pub exec_count: i64,
 }
 
@@ -65,7 +64,6 @@ impl TaskModel {
             interval: None,
             last_execution: None,
             next_execution: None,
-            last_exec_succeeded: false,
             exec_count: 0,
         };
         task.next_execution = task.calc_next_execution();
