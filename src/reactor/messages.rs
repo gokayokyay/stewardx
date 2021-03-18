@@ -33,11 +33,23 @@ pub enum ReactorMessage {
     ExecutionFinished {
         id: Uuid,
         successful: bool
+    },
+    ServerGetTasks {
+        offset: Option<i64>,
+        resp: ComposedResponse<Vec<TaskModel>>
+    },
+    ServerExecuteTask {
+        task_id: Uuid,
+        resp: OneShotMessageResponse<bool>
+    },
+    ServerAbortTask {
+        task_id: Uuid,
+        resp: OneShotMessageResponse<bool>
     }
 }
 
-type AnyResult<T> = Result<T, anyhow::Error>;
-type ComposedResponse<T> = OneShotMessageResponse<AnyResult<T>>;
+// type AnyResult<T> = Result<T, anyhow::Error>;
+type ComposedResponse<T> = OneShotMessageResponse<anyhow::Result<T>>;
 
 impl ReactorMessage {
     pub fn get_type<'a>(&'a self) -> &'a str {
@@ -49,6 +61,9 @@ impl ReactorMessage {
             ReactorMessage::WatchExecution { .. } => "WatchExecution",
             ReactorMessage::OutputReceived { .. } => "OutputReceived",
             ReactorMessage::ExecutionFinished { .. } => "ExecutionFinished",
+            ReactorMessage::ServerGetTasks {.. } => "ServerGetTasks",
+            ReactorMessage::ServerExecuteTask { .. } => "ServerExecuteTask",
+            ReactorMessage::ServerAbortTask { .. } => "ServerAbortTask"
         }
     }
 }

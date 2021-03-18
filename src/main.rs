@@ -75,14 +75,16 @@ async fn main() {
 
     tokio::spawn(async {
         let server_receiver = Arc::new(tokio::sync::Mutex::new(sv_rx));
+        let (tx, mut rx) = tokio::sync::mpsc::channel(128);
         let mut reactor = Reactor {
             db_sender: db_tx,
             executor_sender: ex_tx,
             task_watcher_sender: tw_tx,
             output_emitter: o_tx,
             server_receiver,
+            inner_sender: tx,
         };
-        reactor.listen().await;
+        reactor.listen(rx).await;
     })
     .await;
     // let dbman = db::DBManager::new(pool, db_rx);

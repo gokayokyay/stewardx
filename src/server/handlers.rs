@@ -70,7 +70,7 @@ pub async fn exec_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow:
             sender
                 .send(ServerMessage::ExecuteTask { task_id, resp: tx })
                 .await;
-            if let Ok(Ok(_)) = rx.await {
+            if let Ok(_) = rx.await {
                 return response_json!(
                     body: &serde_json::json!({
                          "status": "success"

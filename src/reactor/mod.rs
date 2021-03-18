@@ -32,6 +32,7 @@ impl Reactor {
             Self::schedule(schedule_sender.clone()).await;
         });
         while let Some(message) = receiver.recv().await {
+            println!("Received message {}", message.get_type());
             let db_sender = self.db_sender.clone();
             let executor_sender = self.executor_sender.clone();
             let task_watcher_sender = self.task_watcher_sender.clone();
@@ -48,7 +49,7 @@ impl Reactor {
                     }
                     ReactorMessage::ExecuteScheduledTasks { when } => {
                         let (tx, rx) = oneshot::channel();
-                        let task_models = inner_sender.send(ReactorMessage::GetScheduledTasks {
+                        inner_sender.send(ReactorMessage::GetScheduledTasks {
                             when,
                             resp: tx,
                         }).await;
@@ -67,6 +68,7 @@ impl Reactor {
                                 return;
                             }
                         };
+                        println!("{:?}", task_models);
                         let mut tasks = task_models.iter().map(|task| {
                             let boxed_task;
                             ModelToTask!(task => boxed_task);
@@ -116,11 +118,17 @@ impl Reactor {
                         // task_watcher_sender.send(TaskWatcherMessage::WatchExecution {
                             
                         // }).await;
-                        inner_sender.send(ReactorMessage::WatchExecution {
+                        let watch_handler = inner_sender.send(ReactorMessage::WatchExecution {
                             task_id: id,
                             exec_process: Ok(result),
+                        });
+                        // If there's no output handle, then it means the task has finished execution
+                        inner_sender.send(ReactorMessage::ExecutionFinished {
+                            id,
+                            successful: true
                         }).await;
 
+                        watch_handler.await;
                     },
                     ReactorMessage::CreateExecutionReport { report, resp } => {
                         info!("Sending CreateExecutionReport message to DBManager: {}", report.task_id);
@@ -145,11 +153,6 @@ impl Reactor {
                                 model: output
                             }).await;
                         }
-                        // If there's no output handle, then it means the task has finished execution
-                        inner_sender.send(ReactorMessage::ExecutionFinished {
-                            id: task_id,
-                            successful: true
-                        }).await;
                     },
                     ReactorMessage::OutputReceived { model } => {
                         output_emitter.send(model);
@@ -175,6 +178,51 @@ impl Reactor {
                             resp: db_tx,
                         }).await;
                     }
+                    ReactorMessage::ServerGetTasks { offset, resp } => {
+                        let (db_tx, db_rx) = tokio::sync::oneshot::channel();
+                        db_sender
+                            .send(DBMessage::GetTasks {
+                                offset,
+                                resp: db_tx,
+                            })
+                            .await;
+                        let result = db_rx.await.unwrap();
+                        resp.send(result);
+                    }
+                    ReactorMessage::ServerExecuteTask { task_id, resp } => {
+                        let (db_tx, db_rx) = tokio::sync::oneshot::channel();
+                        db_sender
+                            .send(DBMessage::GetTask {
+                                id: task_id,
+                                resp: db_tx,
+                            })
+                            .await;
+                        let task = db_rx.await.unwrap();
+                        match task {
+                            Ok(task) => {
+                                let boxed_task;
+                                ModelToTask!(task => boxed_task);
+                                match boxed_task {
+                                    Some(task) => {
+                                        inner_sender.send(ReactorMessage::ExecuteTask {
+                                            task,
+                                        }).await;
+                                        resp.send(true);
+                                    }
+                                    None => {
+                                        resp.send(false);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                // TODO save error
+                                error!("{}", e.to_string());
+                                eprintln!("{}", e.to_string());
+                                resp.send(false);
+                            }
+                        }
+                    }
+                    ReactorMessage::ServerAbortTask { task_id, resp } => {}
                 }
             });
         }

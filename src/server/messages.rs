@@ -10,7 +10,7 @@ pub enum ServerMessage {
     },
     ExecuteTask {
         task_id: Uuid,
-        resp: OneShotMessageResponse<anyhow::Result<BoxedStream>>,
+        resp: OneShotMessageResponse<bool>,
     },
     AbortTask {
         task_id: Uuid,
