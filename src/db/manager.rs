@@ -41,9 +41,9 @@ impl DBManager {
     ) -> Result<TaskModel, sqlx::Error> {
         let row = sqlx::query_as!(TaskModel, r#"
             INSERT INTO steward_tasks
-                ( id, created_at, updated_at, task_type, last_execution, next_execution, serde_string, last_exec_succeeded, frequency, interval, exec_count )
+                ( id, created_at, updated_at, task_type, last_execution, next_execution, serde_string, frequency, interval, exec_count )
                 VALUES
-                ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 )
+                ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10 )
                 RETURNING *
             "#,
             task.id,
@@ -53,7 +53,6 @@ impl DBManager {
             task.last_execution,
             task.next_execution,
             task.serde_string,
-            task.last_exec_succeeded,
             task.frequency,
             task.interval,
             task.exec_count
@@ -173,7 +172,7 @@ impl DBManager {
         task: TaskModel,
     ) -> Result<TaskModel, sqlx::Error> {
         let row = sqlx::query_as!(TaskModel,
-            "UPDATE steward_tasks SET updated_at = $2, serde_string = $3, frequency = $4, interval = $5, last_execution = $6, next_execution = $7, last_exec_succeeded = $8, exec_count = $9 WHERE id = $1 RETURNING *",
+            "UPDATE steward_tasks SET updated_at = $2, serde_string = $3, frequency = $4, interval = $5, last_execution = $6, next_execution = $7, exec_count = $8 WHERE id = $1 RETURNING *",
             task.id,
             now!(),
             task.serde_string,
@@ -181,7 +180,6 @@ impl DBManager {
             task.interval,
             task.last_execution,
             task.next_execution,
-            task.last_exec_succeeded,
             task.exec_count
             )
             .fetch_one(conn).await;
