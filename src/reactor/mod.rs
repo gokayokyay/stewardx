@@ -137,10 +137,8 @@ impl Reactor {
                                 // Receiver dropped
                                 error!("{}", e.to_string());
                                 let report = ExecutionReport::new(id, false, Vec::default());
-                                let (er_tx, _) = oneshot::channel();
                                 inner_sender.send(ReactorMessage::CreateExecutionReport {
                                     report,
-                                    resp: er_tx,
                                 }).await;
                                 return;
                             }
@@ -158,14 +156,14 @@ impl Reactor {
                             task_id: id
                         }).await;
                     },
-                    ReactorMessage::CreateExecutionReport { report, resp } => {
+                    ReactorMessage::CreateExecutionReport { report } => {
                         info!("Sending CreateExecutionReport message to DBManager: {}", report.task_id);
                         let (tx, rx) = oneshot::channel();
                         db_sender
                             .send(DBMessage::CreateExecutionReport { resp: tx, report })
                             .await;
                         let report = rx.await.unwrap();
-                        resp.send(report);
+                        // resp.send(report);
                     },
                     ReactorMessage::WatchExecution { task_id, exec_process } => {
                         let (o_tx, mut o_rx) = broadcast::channel(128);
@@ -179,6 +177,11 @@ impl Reactor {
                         while let Ok(output) = o_rx.recv().await {
                             inner_sender.send(ReactorMessage::OutputReceived {
                                 model: output
+                            }).await;
+                        }
+                        if let Ok(report) = er_rx.await {
+                            inner_sender.send(ReactorMessage::CreateExecutionReport {
+                                report,
                             }).await;
                         }
                         inner_sender.send(ReactorMessage::ExecutionFinished {

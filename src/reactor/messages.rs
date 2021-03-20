@@ -18,7 +18,6 @@ pub enum ReactorMessage {
     },
     CreateExecutionReport {
         report: ExecutionReport,
-        resp: ComposedResponse<ExecutionReport>
     },
     WatchExecution {
         task_id: Uuid,
