@@ -1,7 +1,7 @@
 [package]
 name = "stewardx"
 version = "0.1.0"
-authors = ["vagrant"]
+authors = ["Gökay Okyay <gokayokyay@hotmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,7 +20,8 @@ tracing = "0.1.23"
 tracing-futures = "0.2.4"
 cron = "0.8.0"
 tracing-subscriber = { version = "0.2.15", features = ["registry", "env-filter"] }
-tracing-bunyan-formatter = "0.1.7"
+tracing-bunyan-formatter = "0.2.0"
 hyper = "0.14.4"
-routerify = "2.0.0-beta-2"
+routerify = "2.0.0"
 anyhow = "1.0.38"
+shiplift = "0.7.0"
