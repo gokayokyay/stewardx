@@ -16,6 +16,10 @@ pub enum ServerMessage {
         task_id: Uuid,
         resp: OneShotMessageResponse<bool>,
     },
+    DeleteTask {
+        task_id: Uuid,
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
+    }
 }
 
 impl ServerMessage {
@@ -24,6 +28,7 @@ impl ServerMessage {
             ServerMessage::GetTasks { .. } => "GetTasks",
             ServerMessage::ExecuteTask { .. } => "ExecuteTask",
             ServerMessage::AbortTask { .. } => "AbortTask",
+            ServerMessage::DeleteTask { .. } => "DeleteTask",
         };
     }
 }

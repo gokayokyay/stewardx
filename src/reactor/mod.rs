@@ -47,6 +47,12 @@ impl Reactor {
                         resp,
                     }
                 }
+                ServerMessage::DeleteTask { task_id, resp } => {
+                    ReactorMessage::ServerDeleteTask {
+                        task_id,
+                        resp
+                    }
+                }
             };
             inner_sender.send(reactor_message).await.unwrap_or_default();
         }
@@ -248,6 +254,12 @@ impl Reactor {
                     }
                     ReactorMessage::ServerAbortTask { task_id, resp } => {
                         executor_sender.send(ExecutorMessage::Abort {
+                            id: task_id,
+                            resp,
+                        }).await;
+                    }
+                    ReactorMessage::ServerDeleteTask { task_id, resp } => {
+                        db_sender.send(DBMessage::DeleteTask {
                             id: task_id,
                             resp,
                         }).await;

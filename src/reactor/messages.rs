@@ -45,6 +45,10 @@ pub enum ReactorMessage {
         task_id: Uuid,
         resp: OneShotMessageResponse<bool>
     },
+    ServerDeleteTask {
+        task_id: Uuid,
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+    },
     UpdateTaskExecution {
         task_id: Uuid
     }
@@ -66,6 +70,7 @@ impl ReactorMessage {
             ReactorMessage::ServerGetTasks {.. } => "ServerGetTasks",
             ReactorMessage::ServerExecuteTask { .. } => "ServerExecuteTask",
             ReactorMessage::ServerAbortTask { .. } => "ServerAbortTask",
+            ReactorMessage::ServerDeleteTask { .. } => "ServerDeleteTask",
             ReactorMessage::UpdateTaskExecution { .. } => "UpdateTaskExecution"
         }
     }

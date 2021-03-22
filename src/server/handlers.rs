@@ -132,3 +132,43 @@ pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow
     }
     panic!();
 }
+
+pub async fn delete_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    #[derive(Debug, Serialize, Deserialize)]
+    struct RequestBody {
+        task_id: Uuid,
+    }
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let body = req.body_mut();
+    if let Some(Ok(body)) = body.data().await {
+        if let Ok(json_value) =
+            serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error>
+        {
+            let sender = req.data::<Sender<ServerMessage>>().unwrap();
+            let task_id = json_value.task_id;
+            sender
+                .send(ServerMessage::DeleteTask { task_id, resp: tx })
+                .await;
+            if let Ok(result) = rx.await {
+                let status = "success";
+                // if result {
+                //     status = "success"
+                // } else {
+                //     status = "error"
+                // }
+                return response_json!(body: &serde_json::json!({ "status": status }));
+            } else {
+                println!("Abort RX - server waiting failed");
+                return response_json!(
+                    status: hyper::StatusCode::NOT_FOUND,
+                    body: &serde_json::json!({
+                         "status": "error"
+                     })
+                );
+            }
+        } else {
+            println!("{:?}", &body);
+        }
+    }
+    panic!();
+}

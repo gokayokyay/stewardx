@@ -3,12 +3,14 @@ use executor::Executor;
 use models::{OutputModel, TaskModel};
 use reactor::Reactor;
 use server::Server;
+use shiplift::Docker;
 use std::{str::FromStr, sync::Arc};
-use tasks::{CmdTask, TaskWatcher};
+use tasks::{CmdTask, DockerTask, TaskWatcher};
 use tokio::task::spawn_blocking;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
+use once_cell::sync::Lazy;
 
 mod db;
 mod executor;
@@ -18,6 +20,10 @@ mod server;
 mod tasks;
 mod traits;
 mod types;
+
+static GLOBAL_DOCKER: Lazy<shiplift::Docker> = Lazy::new(|| {
+    shiplift::Docker::default()
+});
 
 #[tokio::main]
 async fn main() {
@@ -46,6 +52,8 @@ async fn main() {
     tokio::spawn(async {
         // let task = CmdTask::new(uuid::Uuid::new_v4(), Box::new("/bin/bash temp.sh".to_string()));
         // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(task), "Every(30 * * * * * *)".to_string())).await;
+        // let docker_task = DockerTask::new(uuid::Uuid::new_v4(), String::from("busybox:latest"), Vec::default());
+        // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(docker_task), "Every(45 * * * * * *)".to_string())).await;
         let mut db_manager = db::DBManager::new(pool, db_rx);
         db_manager.listen().await;
     });

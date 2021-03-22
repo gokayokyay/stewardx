@@ -193,13 +193,21 @@ impl DBManager {
         )
     )]
     pub async fn delete_task(conn: &mut Connection, id: Uuid) -> Result<TaskModel, sqlx::Error> {
+        // Delete errors of task
+        // let row = sqlx::query!("DELETE FROM steward_task_errors WHERE task_id = $1;", id);
+        let error_rows = sqlx::query!("DELETE FROM steward_task_errors WHERE task_id = $1", id)
+            .fetch_all(conn)
+            .await;
+        let report_rows = sqlx::query!("DELETE FROM steward_task_execution_report WHERE task_id = $1", id)
+            .fetch_all(&mut conn)
+            .await;
         let row = sqlx::query_as!(
             TaskModel,
-            "DELETE FROM steward_tasks WHERE id = $1 RETURNING *",
+            "DELETE FROM steward_tasks WHERE id = $1 RETURNING *;",
             id
         )
-        .fetch_one(conn)
-        .await;
+            .fetch_one(conn)
+            .await;
         row
     }
     #[instrument(
