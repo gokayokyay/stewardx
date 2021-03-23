@@ -37,19 +37,16 @@ impl Executable for DockerTask {
             .pull(&PullOptions::builder().image(&self.image).build());
 
         while let Some(pull_result) = stream.next().await {
-            match pull_result {
-                Err(e) => return Err(TaskError::Generic(self.id, e.to_string())),
-                _ => ()
-                // Ok(a) => println!("{}", a)
-            }
+            println!("{:?}", pull_result);
         }
         let options = ContainerOptions::builder(&self.image).env(&self.env).build();
         let info = docker.containers().create(&options).await.unwrap();
         let id = info.id;
         self.container_id = id.clone();
         let container = docker.containers().get(&id);
-        let a = container.start().await;
-        println!("res: {:?}", a);
+        if let Err(a) = container.start().await {
+            return Err(TaskError::Generic(self.id, a.to_string()));
+        }
 
         let tty_multiplexer = container.attach().await.unwrap();
         let (reader, _writer) = tty_multiplexer.split();
