@@ -128,6 +128,9 @@ impl Reactor {
                         let (t_tx, t_rx) = oneshot::channel();
                         let message = ExecutorMessage::Execute { task, resp: t_tx };
                         executor_sender.send(message).await;
+                        inner_sender.send(ReactorMessage::UpdateTaskExecution {
+                            task_id: id
+                        }).await;
                         let result = match t_rx.await {
                             Ok(r) => {
                                 match r {
@@ -157,9 +160,6 @@ impl Reactor {
                         inner_sender.send(ReactorMessage::WatchExecution {
                             task_id: id,
                             exec_process: Ok(result),
-                        }).await;
-                        inner_sender.send(ReactorMessage::UpdateTaskExecution {
-                            task_id: id
                         }).await;
                     },
                     ReactorMessage::CreateExecutionReport { report } => {

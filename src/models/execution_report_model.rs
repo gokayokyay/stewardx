@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::now;
 
-#[derive(Debug)]
+#[derive(sqlx::FromRow, Debug)]
 pub struct ExecutionReport {
     pub id: Uuid,
     pub task_id: Uuid,

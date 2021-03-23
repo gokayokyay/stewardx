@@ -1,7 +1,7 @@
 use futures::StreamExt;
 // use tokio_stream::StreamExt;
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize, __private::doc};
 use async_trait::async_trait;
 use shiplift::{ContainerOptions, PullOptions, tty::TtyChunk};
 
@@ -40,15 +40,21 @@ impl Executable for DockerTask {
             match pull_result {
                 Err(e) => return Err(TaskError::Generic(self.id, e.to_string())),
                 _ => ()
+                // Ok(a) => println!("{}", a)
             }
         }
         let options = ContainerOptions::builder(&self.image).env(&self.env).build();
         let info = docker.containers().create(&options).await.unwrap();
         let id = info.id;
         self.container_id = id.clone();
-        let tty_multiplexer = docker.containers().get(&id).attach().await.unwrap();
+        let container = docker.containers().get(&id);
+        let a = container.start().await;
+        println!("res: {:?}", a);
+
+        let tty_multiplexer = container.attach().await.unwrap();
         let (reader, _writer) = tty_multiplexer.split();
         let stream = reader.map(|result| {
+            println!("{:?}", result);
             match result {
                 Ok(chunk) => {
                     let output = match chunk {

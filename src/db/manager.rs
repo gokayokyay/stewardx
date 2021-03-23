@@ -193,14 +193,6 @@ impl DBManager {
         )
     )]
     pub async fn delete_task(conn: &mut Connection, id: Uuid) -> Result<TaskModel, sqlx::Error> {
-        // Delete errors of task
-        // let row = sqlx::query!("DELETE FROM steward_task_errors WHERE task_id = $1;", id);
-        let error_rows = sqlx::query!("DELETE FROM steward_task_errors WHERE task_id = $1", id)
-            .fetch_all(conn)
-            .await;
-        let report_rows = sqlx::query!("DELETE FROM steward_task_execution_report WHERE task_id = $1", id)
-            .fetch_all(&mut conn)
-            .await;
         let row = sqlx::query_as!(
             TaskModel,
             "DELETE FROM steward_tasks WHERE id = $1 RETURNING *;",
@@ -281,6 +273,49 @@ impl DBManager {
         }
         Ok(results)
     }
+    #[instrument(name = "Delete execution reports for task.", skip(conn))]
+    pub async fn delete_execution_reports_for_task(
+        conn: &mut Connection,
+        task_id: Uuid,
+    ) -> Result<Vec<ExecutionReport>, sqlx::Error> {
+        let rows = sqlx::query!(
+            r#"
+            DELETE FROM steward_task_execution_report WHERE task_id = $1 RETURNING *
+            "#,
+            task_id
+        )
+        // .bind(task_id)
+        .fetch_all(conn)
+        .await?;
+        let mut results = vec![];
+        for row in rows {
+            let result = ExecutionReport::new_string_output(
+                row.id,
+                row.task_id,
+                row.created_at,
+                row.successful,
+                row.output,
+            );
+            results.push(result);
+        }
+        return Ok(results);
+    }
+    #[instrument(name = "Delete errors for task.", skip(conn))]
+    pub async fn delete_errors_for_task(
+        conn: &mut Connection,
+        task_id: Uuid,
+    ) -> Result<Vec<TaskError>, sqlx::Error> {
+        let rows = sqlx::query_as!(
+            TaskError,
+            r#"
+            DELETE FROM steward_task_errors WHERE task_id = $1 RETURNING *
+            "#,
+            task_id
+        )
+        .fetch_all(conn)
+        .await?;
+        Ok(rows)
+    }
 }
 
 macro_rules! sqlx_to_anyhow {
@@ -298,6 +333,7 @@ impl DBManager {
         while let Some(message) = self.rx.recv().await {
             info!("Got a {} message", message.get_type());
             let mut connection = self.pool.acquire().await.unwrap();
+            let mut pool = self.pool.clone();
             tokio::spawn(async move {
                 match message {
                     DBMessage::GetTask { id, resp } => {
@@ -337,6 +373,11 @@ impl DBManager {
                         resp.send(task);
                     }
                     DBMessage::DeleteTask { id, resp } => {
+                        let mut error_connection = pool.acquire().await.unwrap();
+                        let mut report_connection = pool.acquire().await.unwrap();
+                        let errors = Self::delete_errors_for_task(&mut error_connection, id);
+                        let reports = Self::delete_execution_reports_for_task(&mut report_connection, id);
+                        tokio::join!(errors, reports);
                         let task = sqlx_to_anyhow!(Self::delete_task(&mut connection, id).await);
                         resp.send(task);
                     }
@@ -355,6 +396,21 @@ impl DBManager {
                             Self::get_execution_reports(&mut connection, task_id, offset).await
                         );
                         resp.send(reports);
+                    }
+                    DBMessage::DeleteExecutionReport { id, resp } => {
+                        todo!()
+                    }
+                    DBMessage::DeleteExecutionReportsForTask { task_id, resp } => {
+                        let reports = sqlx_to_anyhow!(
+                            Self::delete_execution_reports_for_task(&mut connection, task_id).await
+                        );
+                        resp.send(reports);
+                    }
+                    DBMessage::DeleteErrorsForTask { task_id, resp } => {
+                        let errors = sqlx_to_anyhow!(
+                            Self::delete_errors_for_task(&mut connection, task_id).await
+                        );
+                        resp.send(errors);
                     }
                 };
             });
