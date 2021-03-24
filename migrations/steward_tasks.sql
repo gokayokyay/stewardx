@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS steward_tasks (
     id uuid NOT NULL,
+    task_name varchar(30) NOT NULL,
     created_at timestamp NOT NULL,
     updated_at timestamp NOT NULL,
     task_type varchar(30) NOT NULL,

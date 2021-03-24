@@ -7,6 +7,7 @@ use crate::{now, tasks::Frequency, types::BoxedTask};
 #[derive(sqlx::FromRow, Debug, Clone, Serialize)]
 pub struct TaskModel {
     pub id: Uuid,
+    pub task_name: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
     pub task_type: String,
@@ -52,10 +53,11 @@ impl TaskModel {
         );
         self
     }
-    pub fn from_boxed_task(task: BoxedTask, frequency: String) -> Self {
+    pub fn from_boxed_task(task: BoxedTask, name: String, frequency: String) -> Self {
         let serde_string = task.to_string();
         let mut task = Self {
             id: task.get_id(),
+            task_name: name,
             created_at: now!(),
             updated_at: now!(),
             task_type: task.get_type(),

@@ -41,12 +41,13 @@ impl DBManager {
     ) -> Result<TaskModel, sqlx::Error> {
         let row = sqlx::query_as!(TaskModel, r#"
             INSERT INTO steward_tasks
-                ( id, created_at, updated_at, task_type, last_execution, next_execution, serde_string, frequency, interval, exec_count )
+                ( id, task_name, created_at, updated_at, task_type, last_execution, next_execution, serde_string, frequency, interval, exec_count )
                 VALUES
-                ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10 )
+                ( $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11 )
                 RETURNING *
             "#,
             task.id,
+            task.task_name,
             task.created_at,
             task.updated_at,
             task.task_type,
