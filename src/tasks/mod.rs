@@ -5,7 +5,7 @@ mod frequency;
 mod messages;
 mod watcher;
 pub use cmd_async::CmdTask;
-pub use docker_async::DockerTask;
+pub use docker_async::{DockerTask, DockerImageType};
 // pub use errors::TaskError;
 pub use frequency::Frequency;
 pub use messages::TaskWatcherMessage;
