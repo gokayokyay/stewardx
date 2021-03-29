@@ -80,6 +80,7 @@ impl Executable for DockerTask {
         let options = ContainerOptions::builder(&image).env(&self.env).build();
         let info = docker.containers().create(&options).await.unwrap();
         let id = info.id;
+        // println!("Container built, id: {}", &id);
         self.container_id = id.clone();
         let container = docker.containers().get(&id);
         if let Err(a) = container.start().await {
@@ -111,7 +112,8 @@ impl Executable for DockerTask {
     async fn abort(&mut self) -> bool {
         let docker = &GLOBAL_DOCKER;
         let container = docker.containers().get(&self.container_id);
-        match container.kill(Some("SIGKILL")).await {
+        container.stop(None).await;
+        match container.kill(None).await {
             Ok(_) => true,
             Err(_) => false
         }
