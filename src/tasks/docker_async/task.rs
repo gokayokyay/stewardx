@@ -109,7 +109,12 @@ impl Executable for DockerTask {
     }
 
     async fn abort(&mut self) -> bool {
-        todo!()
+        let docker = &GLOBAL_DOCKER;
+        let container = docker.containers().get(&self.container_id);
+        match container.kill(Some("SIGKILL")).await {
+            Ok(_) => true,
+            Err(_) => false
+        }
     }
 
     fn get_id(&self) -> Uuid {
