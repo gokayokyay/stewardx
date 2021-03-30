@@ -1,3 +1,5 @@
+use std::any;
+
 use uuid::Uuid;
 
 use crate::{models::TaskModel, traits::BoxedStream, types::OneShotMessageResponse};
@@ -19,6 +21,13 @@ pub enum ServerMessage {
     DeleteTask {
         task_id: Uuid,
         resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
+    },
+    CreateTask {
+        task_name: String,
+        frequency: String,
+        task_type: String,
+        task_props: String,
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
     }
 }
 
@@ -29,6 +38,7 @@ impl ServerMessage {
             ServerMessage::ExecuteTask { .. } => "ExecuteTask",
             ServerMessage::AbortTask { .. } => "AbortTask",
             ServerMessage::DeleteTask { .. } => "DeleteTask",
+            ServerMessage::CreateTask { .. } => "CreateTask"
         };
     }
 }

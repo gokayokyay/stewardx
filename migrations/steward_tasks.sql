@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS steward_tasks (
     task_type varchar(30) NOT NULL,
     serde_string varchar NOT NULL,
     frequency text NOT NULL,
-    interval bigint,
     last_execution timestamp,
     next_execution timestamp,
     exec_count bigint DEFAULT '0' NOT NULL,

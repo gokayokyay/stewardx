@@ -17,3 +17,10 @@ pub trait FromJson {
     where
         Self: Sized;
 }
+
+pub trait GetSerdeFromProps {
+    fn get_serde_from_props(task_props: String) -> Result<String, anyhow::Error>;
+    fn prop_not_found(prop: &str) -> anyhow::Error {
+        return anyhow::anyhow!("Required property not specified: '{}'", prop);
+    }
+}

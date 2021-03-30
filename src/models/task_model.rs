@@ -13,7 +13,6 @@ pub struct TaskModel {
     pub task_type: String,
     pub serde_string: String,
     pub frequency: String,
-    pub interval: Option<i64>,
     pub last_execution: Option<NaiveDateTime>,
     pub next_execution: Option<NaiveDateTime>,
     pub exec_count: i64,
@@ -32,15 +31,15 @@ impl TaskModel {
 
                 Some(next.naive_utc())
             }
-            Frequency::AfterInterval => {
-                let last_execution = match &self.last_execution {
-                    Some(dt) => dt,
-                    None => return None,
-                };
-                let interval = &self.interval.unwrap();
-                let next_execution = *last_execution + Duration::seconds(*interval);
-                Some(next_execution)
-            }
+            // Frequency::AfterInterval => {
+            //     let last_execution = match &self.last_execution {
+            //         Some(dt) => dt,
+            //         None => return None,
+            //     };
+            //     let interval = &self.interval.unwrap();
+            //     let next_execution = *last_execution + Duration::seconds(*interval);
+            //     Some(next_execution)
+            // }
             Frequency::Hook => None,
         };
         return next_execution;
@@ -63,12 +62,43 @@ impl TaskModel {
             task_type: task.get_type(),
             serde_string,
             frequency,
-            interval: None,
             last_execution: None,
             next_execution: None,
             exec_count: 0,
         };
         task.next_execution = task.calc_next_execution();
         return task;
+    }
+    pub fn new(id: Option<Uuid>, task_name: String, task_type: String, serde_string: String, frequency: String) -> Self {
+        let id = match id {
+            Some(id) => id,
+            None => Uuid::new_v4()
+        };
+        let mut task = Self {
+            id,
+            task_name,
+            created_at: now!(),
+            updated_at: now!(),
+            task_type,
+            serde_string,
+            frequency,
+            last_execution: None,
+            next_execution: None,
+            exec_count: 0,
+        };
+        task.next_execution = task.calc_next_execution();
+        return task;
+    }
+    pub fn get_serde_from_props(task_type: String, task_props: String) -> Result<String, anyhow::Error> {
+        use crate::traits::GetSerdeFromProps;
+        match task_type.as_str() {
+            "CmdTask" => {
+                return crate::tasks::CmdTask::get_serde_from_props(task_props);
+            }
+            "DockerTask" => {
+                return crate::tasks::DockerTask::get_serde_from_props(task_props);
+            }
+            _ => return Err(anyhow::anyhow!("Unknown task type {}", task_type))
+        };
     }
 }

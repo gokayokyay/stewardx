@@ -11,10 +11,7 @@ use tokio::{
 use tokio_stream::wrappers::LinesStream;
 use uuid::Uuid;
 
-use crate::{
-    models::TaskError,
-    traits::{BoxedStream, Executable, FromJson},
-};
+use crate::{models::TaskError, traits::{BoxedStream, Executable, FromJson, GetSerdeFromProps}};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CmdTask {
@@ -135,5 +132,22 @@ impl FromJson for CmdTask {
             }
         }
         return Err(TaskError::MalformedSerde(uuid::Uuid::default(), json));
+    }
+}
+
+impl GetSerdeFromProps for CmdTask {
+    fn get_serde_from_props(task_props: String) -> Result<String, anyhow::Error> {
+        let value: serde_json::Value = match serde_json::from_str(&task_props) {
+            Ok(v) => v,
+            Err(e) => {
+                return Err(anyhow::anyhow!(e));
+            }
+        };
+        let command = value["command"].as_str();
+        if command.is_none() {
+            return Err(Self::prop_not_found("command"));
+        }
+        let cmd_task = crate::tasks::CmdTask::new(Uuid::default(), Box::new(command.unwrap().to_string()));
+        return Ok(cmd_task.to_string());
     }
 }

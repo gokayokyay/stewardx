@@ -3,7 +3,7 @@ mod messages;
 use std::sync::Arc;
 use tokio::sync::{Mutex, oneshot, broadcast};
 
-use crate::{ModelToTask, db::DBMessage, executor::ExecutorMessage, models::ExecutionReport, now, server::ServerMessage, tasks::TaskWatcherMessage, types::{DBSender, ExecutorSender, OutputSender, ReactorReceiver, ReactorSender, ServerReceiver, TaskWatcherSender}};
+use crate::{ModelToTask, db::DBMessage, executor::ExecutorMessage, models::{ExecutionReport, TaskModel}, now, server::ServerMessage, tasks::TaskWatcherMessage, types::{DBSender, ExecutorSender, OutputSender, ReactorReceiver, ReactorSender, ServerReceiver, TaskWatcherSender}};
 pub use messages::ReactorMessage;
 
 use tracing::{error, info};
@@ -50,6 +50,16 @@ impl Reactor {
                 ServerMessage::DeleteTask { task_id, resp } => {
                     ReactorMessage::ServerDeleteTask {
                         task_id,
+                        resp
+                    }
+                }
+                
+                ServerMessage::CreateTask { task_name, frequency, task_type, task_props, resp } => {
+                    ReactorMessage::ServerCreateTask {
+                        task_name,
+                        frequency,
+                        task_type,
+                        task_props,
                         resp
                     }
                 }
@@ -281,6 +291,25 @@ impl Reactor {
                             task: task_model,
                             resp: db_tx,
                         }).await;
+                    }
+                    ReactorMessage::ServerCreateTask { task_name, frequency, task_type, task_props, resp } => {
+                        let serde_string = match TaskModel::get_serde_from_props(task_type.clone(), task_props.clone()) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                resp.send(Err(e));
+                                return;
+                            }
+                        };
+                        let task = TaskModel::new(None, task_name, task_type, serde_string, frequency);
+                        let (tx, rx) = tokio::sync::oneshot::channel();
+                        db_sender.send(
+                            DBMessage::CreateTask {
+                                task,
+                                resp: tx,
+                            }
+                        ).await;
+                        let result = rx.await.unwrap();
+                        resp.send(result);
                     }
                 }
             });

@@ -25,9 +25,10 @@ impl Server {
             .data(self.message_sender.clone())
             // .middleware(Middleware::pre(logger))
             .get("/tasks", get_tasks)
+            .post("/tasks", exec_task)
+            .delete("/tasks", delete_task)
             .post("/tasks/execute", exec_task)
             .post("/tasks/abort", abort_task)
-            .delete("/tasks/", delete_task)
             // .err_handler_with_info(error_handler)
             .build()
             .unwrap();

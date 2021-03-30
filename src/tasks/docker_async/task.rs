@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use shiplift::{BuildOptions, ContainerOptions, PullOptions, tty::TtyChunk};
 use tempfile::{Builder, TempDir};
 
-use crate::{GLOBAL_DOCKER, traits::{BoxedStream, Executable, FromJson}};
+use crate::{GLOBAL_DOCKER, traits::{BoxedStream, Executable, FromJson, GetSerdeFromProps}};
 use crate::models::TaskError;
 
 use super::DockerImageType;
@@ -152,5 +152,41 @@ impl FromJson for DockerTask {
             }
         }
         return Err(TaskError::MalformedSerde(uuid::Uuid::default(), json));
+    }
+}
+
+
+impl GetSerdeFromProps for DockerTask {
+    fn get_serde_from_props(task_props: String) -> Result<String, anyhow::Error> {
+        let value: serde_json::Value = match serde_json::from_str(&task_props) {
+            Ok(v) => v,
+            Err(e) => {
+                return Err(anyhow::anyhow!(e));
+            }
+        };
+        // return Err(Self::prop_not_found(String::from("aa")));
+        let image = &value["image"];
+        if image.is_null() {
+            return Err(Self::prop_not_found("image"))
+        }
+        let image_type = &image["t"];
+        if image_type.is_null() {
+            return Err(Self::prop_not_found("image:t"));
+        }
+        let content = &image["c"];
+        if content.is_null() {
+            return Err(Self::prop_not_found("image:c"));
+        }
+        match image_type.as_str().unwrap() {
+            "File" => {
+                let docker_task = Self::new(Uuid::default(), DockerImageType::File(content.as_str().unwrap().to_string()), Vec::default());
+                return Ok(docker_task.to_string());
+            },
+            "Image" => {
+                let docker_task = Self::new(Uuid::default(), DockerImageType::Image(content.as_str().unwrap().to_string()), Vec::default());
+                return Ok(docker_task.to_string());
+            },
+            _ => return Err(anyhow::anyhow!("Unknown image type: {}", &image_type))
+        };
     }
 }

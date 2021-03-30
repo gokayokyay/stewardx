@@ -37,7 +37,7 @@ pub enum FrequencyDeserializeError {
 pub enum Frequency {
     Every(Box<String>),
     Hook,
-    AfterInterval,
+    // AfterInterval,
 }
 
 impl Frequency {
@@ -55,7 +55,7 @@ impl Frequency {
                     .upcoming(chrono::Utc)
                     .next();
             }
-            Frequency::AfterInterval => {}
+            // Frequency::AfterInterval => {}
             Frequency::Hook => {}
         }
         return None;
@@ -66,7 +66,7 @@ impl ToString for Frequency {
     fn to_string(&self) -> String {
         match &self {
             Frequency::Every(s) => return format!("Every({})", s),
-            Frequency::AfterInterval => return String::from("AfterInterval"),
+            // Frequency::AfterInterval => return String::from("AfterInterval"),
             Frequency::Hook => return String::from("Hook"),
         }
     }
@@ -85,8 +85,8 @@ impl FromStr for Frequency {
                     .to_string()
                     .into(),
             ))
-        } else if s.starts_with("AfterInterval") {
-            Ok(Self::AfterInterval)
+        // } else if s.starts_with("AfterInterval") {
+        //     Ok(Self::AfterInterval)
         } else {
             Err(FrequencyDeserializeError::MalformedData)
         }
