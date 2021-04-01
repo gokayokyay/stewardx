@@ -56,6 +56,9 @@ pub enum ReactorMessage {
         task_id: Uuid,
         resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
     },
+    ServerGetActiveTasks {
+        resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>
+    },
     UpdateTaskExecution {
         task_id: Uuid
     }
@@ -79,6 +82,7 @@ impl ReactorMessage {
             ReactorMessage::ServerExecuteTask { .. } => "ServerExecuteTask",
             ReactorMessage::ServerAbortTask { .. } => "ServerAbortTask",
             ReactorMessage::ServerDeleteTask { .. } => "ServerDeleteTask",
+            ReactorMessage::ServerGetActiveTasks { .. } => "ServerGetActiveTasks",
             ReactorMessage::UpdateTaskExecution { .. } => "UpdateTaskExecution"
         }
     }

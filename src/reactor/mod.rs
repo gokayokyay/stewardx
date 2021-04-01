@@ -63,6 +63,11 @@ impl Reactor {
                         resp
                     }
                 }
+                ServerMessage::GetActiveTasks { resp } => {
+                    ReactorMessage::ServerGetActiveTasks {
+                        resp
+                    }
+                }
             };
             inner_sender.send(reactor_message).await.unwrap_or_default();
         }
@@ -310,6 +315,36 @@ impl Reactor {
                         ).await;
                         let result = rx.await.unwrap();
                         resp.send(result);
+                    }
+                    ReactorMessage::ServerGetActiveTasks { resp } => {
+                        let (e_tx, e_rx) = oneshot::channel();
+                        executor_sender.send(
+                            ExecutorMessage::GetActiveTaskIDs {
+                                resp: e_tx
+                            }
+                        ).await;
+                        let active_task_ids = e_rx.await.unwrap();
+                        let mut active_tasks = vec![];
+                        // TODO: Find a better way in future
+                        for task_id in active_task_ids {
+                            let (db_tx, db_rx) = oneshot::channel();
+                            db_sender.clone().send(DBMessage::GetTask {
+                                id: task_id,
+                                resp: db_tx,
+                            }).await;
+                            let task = db_rx.await.unwrap();
+                            match task {
+                                Ok(task) => {
+                                    active_tasks.push(task);
+                                }
+                                Err(e) => {
+                                    resp.send(Err(e));
+                                    return;
+                                }
+                            };
+                        }
+                        resp.send(Ok(active_tasks));
+                        
                     }
                 }
             });

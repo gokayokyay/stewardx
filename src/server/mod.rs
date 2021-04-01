@@ -6,7 +6,7 @@ use routerify::{Router, RouterService};
 
 mod handlers;
 mod messages;
-use handlers::{abort_task, delete_task, exec_task, get_tasks};
+use handlers::{abort_task, create_task, delete_task, exec_task, get_active_tasks, get_tasks};
 pub use messages::ServerMessage;
 use tracing::info;
 
@@ -25,10 +25,11 @@ impl Server {
             .data(self.message_sender.clone())
             // .middleware(Middleware::pre(logger))
             .get("/tasks", get_tasks)
-            .post("/tasks", exec_task)
+            .post("/tasks", create_task)
             .delete("/tasks", delete_task)
             .post("/tasks/execute", exec_task)
             .post("/tasks/abort", abort_task)
+            .get("/activetasks", get_active_tasks)
             // .err_handler_with_info(error_handler)
             .build()
             .unwrap();

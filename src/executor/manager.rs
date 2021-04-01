@@ -82,6 +82,11 @@ impl Executor {
                             .await;
                     }
                 }
+                ExecutorMessage::GetActiveTaskIDs { resp } => {
+                    resp.send(
+                        self.task_handles.iter().map(|t| t.id).collect::<Vec<Uuid>>()
+                    );
+                }
             }
         }
     }

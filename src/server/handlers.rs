@@ -222,3 +222,26 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
     }
     panic!();
 }
+
+pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    sender
+        .send(ServerMessage::GetActiveTasks {
+            resp: tx,
+        })
+        .await;
+
+    let result = rx.await.unwrap();
+    match result {
+        Ok(result) => response_json!(body: &result),
+        Err(e) => {
+            let obj = serde_json::json!({
+                "error": e.to_string()
+            });
+            let obj = obj.as_str();
+            let obj = obj.unwrap();
+            response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
+        }
+    }
+}

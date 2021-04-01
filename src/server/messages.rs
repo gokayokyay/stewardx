@@ -28,6 +28,9 @@ pub enum ServerMessage {
         task_type: String,
         task_props: String,
         resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+    },
+    GetActiveTasks {
+        resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>
     }
 }
 
@@ -38,7 +41,8 @@ impl ServerMessage {
             ServerMessage::ExecuteTask { .. } => "ExecuteTask",
             ServerMessage::AbortTask { .. } => "AbortTask",
             ServerMessage::DeleteTask { .. } => "DeleteTask",
-            ServerMessage::CreateTask { .. } => "CreateTask"
+            ServerMessage::CreateTask { .. } => "CreateTask",
+            ServerMessage::GetActiveTasks { .. } => "GetActiveTasks"
         };
     }
 }
