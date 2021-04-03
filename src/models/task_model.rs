@@ -89,7 +89,7 @@ impl TaskModel {
         task.next_execution = task.calc_next_execution();
         return task;
     }
-    pub fn get_serde_from_props(task_type: String, task_props: String) -> Result<String, anyhow::Error> {
+    pub fn get_serde_from_props(task_type: String, task_props: serde_json::Value) -> Result<String, anyhow::Error> {
         use crate::traits::GetSerdeFromProps;
         match task_type.as_str() {
             "CmdTask" => {

@@ -2,8 +2,9 @@ use std::str::FromStr;
 
 use super::ServerMessage;
 use hyper::{body::HttpBody, Body, Request, Response};
-use routerify::ext::RequestExt;
+use routerify::{Router, ext::RequestExt};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 use uuid::Uuid;
 
@@ -206,7 +207,7 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
         task_name: String,
         frequency: String,
         task_type: String,
-        task_props: String
+        task_props: Value
     }
     let (tx, rx) = tokio::sync::oneshot::channel();
     let body = req.body_mut();
@@ -235,6 +236,7 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                 }
                 Err(e) => {
                     // DB Error
+                    println!("{}", e.to_string());
                     let obj = serde_json::json!({
                         "error": e.to_string()
                     });
@@ -271,9 +273,4 @@ pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyh
             response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
         }
     }
-}
-
-pub async fn app(_req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
-    let index = tokio::fs::read_to_string("index.html").await.unwrap();
-    return Ok(Response::builder().body(index.into()).unwrap());
 }

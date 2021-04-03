@@ -30,7 +30,7 @@ pub enum ServerMessage {
         task_name: String,
         frequency: String,
         task_type: String,
-        task_props: String,
+        task_props: serde_json::Value,
         resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
     },
     GetActiveTasks {

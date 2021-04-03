@@ -6,9 +6,12 @@ use routerify::{Router, RouterService};
 
 mod handlers;
 mod messages;
-use handlers::{abort_task, app, create_task, delete_task, exec_task, get_active_tasks, get_task, get_tasks};
+use handlers::{abort_task, create_task, delete_task, exec_task, get_active_tasks, get_task, get_tasks};
 pub use messages::ServerMessage;
 use tracing::info;
+
+mod app_router;
+use app_router::app_router;
 
 pub struct Server {
     message_sender: Sender<ServerMessage>,
@@ -24,7 +27,7 @@ impl Server {
             // error handler and middlewares.
             .data(self.message_sender.clone())
             // .middleware(Middleware::pre(logger))
-            // .get("/app/:dummy", app)
+            .scope("/app", app_router())
             .get("/tasks", get_tasks)
             .get("/tasks/:id", get_task)
             .post("/tasks", create_task)

@@ -157,13 +157,7 @@ impl FromJson for DockerTask {
 
 
 impl GetSerdeFromProps for DockerTask {
-    fn get_serde_from_props(task_props: String) -> Result<String, anyhow::Error> {
-        let value: serde_json::Value = match serde_json::from_str(&task_props) {
-            Ok(v) => v,
-            Err(e) => {
-                return Err(anyhow::anyhow!(e));
-            }
-        };
+    fn get_serde_from_props(value: serde_json::Value) -> Result<String, anyhow::Error> {
         // return Err(Self::prop_not_found(String::from("aa")));
         let image = &value["image"];
         if image.is_null() {

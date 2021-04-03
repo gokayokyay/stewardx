@@ -136,13 +136,7 @@ impl FromJson for CmdTask {
 }
 
 impl GetSerdeFromProps for CmdTask {
-    fn get_serde_from_props(task_props: String) -> Result<String, anyhow::Error> {
-        let value: serde_json::Value = match serde_json::from_str(&task_props) {
-            Ok(v) => v,
-            Err(e) => {
-                return Err(anyhow::anyhow!(e));
-            }
-        };
+    fn get_serde_from_props(value: serde_json::Value) -> Result<String, anyhow::Error> {
         let command = value["command"].as_str();
         if command.is_none() {
             return Err(Self::prop_not_found("command"));
