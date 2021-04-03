@@ -6,7 +6,7 @@ use routerify::{Router, RouterService};
 
 mod handlers;
 mod messages;
-use handlers::{abort_task, create_task, delete_task, exec_task, get_active_tasks, get_tasks};
+use handlers::{abort_task, app, create_task, delete_task, exec_task, get_active_tasks, get_task, get_tasks};
 pub use messages::ServerMessage;
 use tracing::info;
 
@@ -24,7 +24,9 @@ impl Server {
             // error handler and middlewares.
             .data(self.message_sender.clone())
             // .middleware(Middleware::pre(logger))
+            // .get("/app/:dummy", app)
             .get("/tasks", get_tasks)
+            .get("/tasks/:id", get_task)
             .post("/tasks", create_task)
             .delete("/tasks", delete_task)
             .post("/tasks/execute", exec_task)

@@ -37,6 +37,10 @@ pub enum ReactorMessage {
         offset: Option<i64>,
         resp: ComposedResponse<Vec<TaskModel>>
     },
+    ServerGetTask {
+        task_id: Uuid,
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+    },
     ServerCreateTask {
         task_name: String,
         frequency: String,
@@ -83,7 +87,8 @@ impl ReactorMessage {
             ReactorMessage::ServerAbortTask { .. } => "ServerAbortTask",
             ReactorMessage::ServerDeleteTask { .. } => "ServerDeleteTask",
             ReactorMessage::ServerGetActiveTasks { .. } => "ServerGetActiveTasks",
-            ReactorMessage::UpdateTaskExecution { .. } => "UpdateTaskExecution"
+            ReactorMessage::UpdateTaskExecution { .. } => "UpdateTaskExecution",
+            ReactorMessage::ServerGetTask { .. } => "ServerGetTask"
         }
     }
 }

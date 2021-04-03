@@ -68,6 +68,12 @@ impl Reactor {
                         resp
                     }
                 }
+                ServerMessage::GetTask { task_id, resp } => {
+                    ReactorMessage::ServerGetTask {
+                        task_id,
+                        resp
+                    }
+                }
             };
             inner_sender.send(reactor_message).await.unwrap_or_default();
         }
@@ -345,6 +351,16 @@ impl Reactor {
                         }
                         resp.send(Ok(active_tasks));
                         
+                    }
+                    ReactorMessage::ServerGetTask { task_id, resp } => {
+                        let (tx, rx) = oneshot::channel();
+                        db_sender.send(DBMessage::GetTask {
+                            id: task_id,
+                            resp: tx,
+                        }).await;
+
+                        let res = rx.await.unwrap();
+                        resp.send(res);
                     }
                 }
             });

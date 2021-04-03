@@ -10,6 +10,10 @@ pub enum ServerMessage {
         offset: Option<i64>,
         resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>,
     },
+    GetTask {
+        task_id: Uuid,
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+    },
     ExecuteTask {
         task_id: Uuid,
         resp: OneShotMessageResponse<bool>,
@@ -38,6 +42,7 @@ impl ServerMessage {
     pub fn get_type<'a>(&'a self) -> &'a str {
         return match self {
             ServerMessage::GetTasks { .. } => "GetTasks",
+            ServerMessage::GetTask { .. } => "GetTask",
             ServerMessage::ExecuteTask { .. } => "ExecuteTask",
             ServerMessage::AbortTask { .. } => "AbortTask",
             ServerMessage::DeleteTask { .. } => "DeleteTask",

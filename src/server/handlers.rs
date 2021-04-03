@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use super::ServerMessage;
 use hyper::{body::HttpBody, Body, Request, Response};
 use routerify::ext::RequestExt;
@@ -34,6 +36,31 @@ pub async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Err
     sender
         .send(ServerMessage::GetTasks {
             offset: None,
+            resp: tx,
+        })
+        .await;
+
+    let result = rx.await.unwrap();
+    match result {
+        Ok(result) => response_json!(body: &result),
+        Err(e) => {
+            let obj = serde_json::json!({
+                "error": e.to_string()
+            });
+            let obj = obj.as_str();
+            let obj = obj.unwrap();
+            response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
+        }
+    }
+}
+
+pub async fn get_task(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    let task_id = req.param("id").unwrap();
+    sender
+        .send(ServerMessage::GetTask {
+            task_id: Uuid::from_str(task_id).unwrap(),
             resp: tx,
         })
         .await;
@@ -244,4 +271,9 @@ pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyh
             response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
         }
     }
+}
+
+pub async fn app(_req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    let index = tokio::fs::read_to_string("index.html").await.unwrap();
+    return Ok(Response::builder().body(index.into()).unwrap());
 }
