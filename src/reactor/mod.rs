@@ -312,7 +312,7 @@ impl Reactor {
                                 return;
                             }
                         };
-                        let task = TaskModel::new(None, task_name, task_type, serde_string, frequency);
+                        let task = TaskModel::new(Some(new_id), task_name, task_type, serde_string, frequency);
                         let (tx, rx) = tokio::sync::oneshot::channel();
                         db_sender.send(
                             DBMessage::CreateTask {
