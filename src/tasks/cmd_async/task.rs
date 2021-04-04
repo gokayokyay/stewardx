@@ -136,12 +136,12 @@ impl FromJson for CmdTask {
 }
 
 impl GetSerdeFromProps for CmdTask {
-    fn get_serde_from_props(value: serde_json::Value) -> Result<String, anyhow::Error> {
+    fn get_serde_from_props(id: Uuid, value: serde_json::Value) -> Result<String, anyhow::Error> {
         let command = value["command"].as_str();
         if command.is_none() {
             return Err(Self::prop_not_found("command"));
         }
-        let cmd_task = crate::tasks::CmdTask::new(Uuid::default(), Box::new(command.unwrap().to_string()));
+        let cmd_task = crate::tasks::CmdTask::new(id, Box::new(command.unwrap().to_string()));
         return Ok(cmd_task.to_string());
     }
 }

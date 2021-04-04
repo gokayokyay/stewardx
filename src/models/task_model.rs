@@ -89,14 +89,14 @@ impl TaskModel {
         task.next_execution = task.calc_next_execution();
         return task;
     }
-    pub fn get_serde_from_props(task_type: String, task_props: serde_json::Value) -> Result<String, anyhow::Error> {
+    pub fn get_serde_from_props(id: Uuid, task_type: String, task_props: serde_json::Value) -> Result<String, anyhow::Error> {
         use crate::traits::GetSerdeFromProps;
         match task_type.as_str() {
             "CmdTask" => {
-                return crate::tasks::CmdTask::get_serde_from_props(task_props);
+                return crate::tasks::CmdTask::get_serde_from_props(id, task_props);
             }
             "DockerTask" => {
-                return crate::tasks::DockerTask::get_serde_from_props(task_props);
+                return crate::tasks::DockerTask::get_serde_from_props(id, task_props);
             }
             _ => return Err(anyhow::anyhow!("Unknown task type {}", task_type))
         };

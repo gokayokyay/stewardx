@@ -4,6 +4,7 @@ use std::fmt::Debug;
 pub use super::types::BoxedStream;
 use async_trait::async_trait;
 use serde_json::Value;
+use uuid::Uuid;
 
 #[async_trait]
 pub trait Executable: Debug + ToString {
@@ -20,7 +21,7 @@ pub trait FromJson {
 }
 
 pub trait GetSerdeFromProps {
-    fn get_serde_from_props(value: Value) -> Result<String, anyhow::Error>;
+    fn get_serde_from_props(id: Uuid, value: Value) -> Result<String, anyhow::Error>;
     fn prop_not_found(prop: &str) -> anyhow::Error {
         return anyhow::anyhow!("Required property not specified: '{}'", prop);
     }

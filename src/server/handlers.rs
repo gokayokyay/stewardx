@@ -268,6 +268,7 @@ pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyh
             let obj = serde_json::json!({
                 "error": e.to_string()
             });
+            println!("{}", e.to_string());
             let obj = obj.as_str();
             let obj = obj.unwrap();
             response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)

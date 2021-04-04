@@ -304,7 +304,8 @@ impl Reactor {
                         }).await;
                     }
                     ReactorMessage::ServerCreateTask { task_name, frequency, task_type, task_props, resp } => {
-                        let serde_string = match TaskModel::get_serde_from_props(task_type.clone(), task_props.clone()) {
+                        let new_id = uuid::Uuid::new_v4();
+                        let serde_string = match TaskModel::get_serde_from_props(new_id, task_type.clone(), task_props.clone()) {
                             Ok(s) => s,
                             Err(e) => {
                                 resp.send(Err(e));

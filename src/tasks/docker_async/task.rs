@@ -157,7 +157,7 @@ impl FromJson for DockerTask {
 
 
 impl GetSerdeFromProps for DockerTask {
-    fn get_serde_from_props(value: serde_json::Value) -> Result<String, anyhow::Error> {
+    fn get_serde_from_props(id: Uuid, value: serde_json::Value) -> Result<String, anyhow::Error> {
         // return Err(Self::prop_not_found(String::from("aa")));
         let image = &value["image"];
         if image.is_null() {
@@ -173,11 +173,11 @@ impl GetSerdeFromProps for DockerTask {
         }
         match image_type.as_str().unwrap() {
             "File" => {
-                let docker_task = Self::new(Uuid::default(), DockerImageType::File(content.as_str().unwrap().to_string()), Vec::default());
+                let docker_task = Self::new(id, DockerImageType::File(content.as_str().unwrap().to_string()), Vec::default());
                 return Ok(docker_task.to_string());
             },
             "Image" => {
-                let docker_task = Self::new(Uuid::default(), DockerImageType::Image(content.as_str().unwrap().to_string()), Vec::default());
+                let docker_task = Self::new(id, DockerImageType::Image(content.as_str().unwrap().to_string()), Vec::default());
                 return Ok(docker_task.to_string());
             },
             _ => return Err(anyhow::anyhow!("Unknown image type: {}", &image_type))
