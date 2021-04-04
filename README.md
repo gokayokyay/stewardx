@@ -1,7 +1,9 @@
 # StewardX
 
 **S**cheduled **T**ask **E**xecutor **W**ith **A**synchronous **R**untime and **D**atabase **X**
+
 <small>*Because all the cool things has an X...*</small>
+
 StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/). By leveraging [tokio](https://tokio.rs/), it is asynchronous and blazing-fast!
 
 ### Features
