@@ -6,6 +6,8 @@
 
 StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/). By leveraging [tokio](https://tokio.rs/), it is asynchronous and blazing-fast!
 
+*This project is under heavy development, it can (and probably will) break. Please do not use in production yet*
+
 ### Features
  - It's pure Rust and *lightweight*.
  - Uses PostgreSQL as database to persist the tasks.
@@ -14,5 +16,4 @@ StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/).
  - Supports both **Dockerfiles** and pre-built **Docker images**.
  - Has multiple task frequencies, currently it supports `cron` and `hook`.
  - Stores outputs of tasks.
-
 
