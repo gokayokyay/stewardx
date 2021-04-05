@@ -35,6 +35,13 @@ pub enum ServerMessage {
     },
     GetActiveTasks {
         resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>
+    },
+    UpdateTask {
+        task_id: Uuid,
+        task_name: String,
+        frequency: String,
+        task_props: serde_json::Value,
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
     }
 }
 
@@ -47,7 +54,8 @@ impl ServerMessage {
             ServerMessage::AbortTask { .. } => "AbortTask",
             ServerMessage::DeleteTask { .. } => "DeleteTask",
             ServerMessage::CreateTask { .. } => "CreateTask",
-            ServerMessage::GetActiveTasks { .. } => "GetActiveTasks"
+            ServerMessage::GetActiveTasks { .. } => "GetActiveTasks",
+            ServerMessage::UpdateTask { .. } => "UpdateTask"
         };
     }
 }

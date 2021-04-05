@@ -6,7 +6,7 @@ use routerify::{Router, RouterService};
 
 mod handlers;
 mod messages;
-use handlers::{abort_task, create_task, delete_task, exec_task, get_active_tasks, get_task, get_tasks};
+use handlers::{abort_task, create_task, delete_task, exec_task, get_active_tasks, get_task, get_tasks, update_task};
 pub use messages::ServerMessage;
 use tracing::info;
 
@@ -31,6 +31,7 @@ impl Server {
             .get("/tasks", get_tasks)
             .get("/tasks/:id", get_task)
             .post("/tasks", create_task)
+            .post("/tasks/:id", update_task)
             .delete("/tasks", delete_task)
             .post("/tasks/execute", exec_task)
             .post("/tasks/abort", abort_task)

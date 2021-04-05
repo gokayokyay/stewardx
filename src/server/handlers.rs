@@ -275,3 +275,71 @@ pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyh
         }
     }
 }
+
+pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    #[derive(Debug, Serialize, Deserialize)]
+    struct RequestBody {
+        task_name: String,
+        frequency: String,
+        task_type: String,
+        task_props: Value
+    }
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    let task_id = match req.param("id") {
+        Some(id) => Uuid::from_str(id).unwrap(),
+        None => {
+            let obj = serde_json::json!({
+                "error": "Missing query parameter."
+            });
+            let obj = obj.as_str();
+            let obj = obj.unwrap();
+            return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
+        }
+    };
+    let body = req.body_mut();
+    if let Some(Ok(body)) = body.data().await {
+        if let Ok(json_value) =
+            serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error>
+        {
+            let sender = req.data::<Sender<ServerMessage>>().unwrap();
+            sender
+                .send(ServerMessage::UpdateTask { task_id: task_id, task_name: json_value.task_name, frequency: json_value.frequency, task_props: json_value.task_props, resp: tx })
+                .await;
+            let res = match rx.await {
+                Ok(res) => res,
+                Err(e) => {
+                    let obj = serde_json::json!({
+                        "error": e.to_string()
+                    });
+                    let obj = obj.as_str();
+                    let obj = obj.unwrap();
+                    return response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj);
+                }
+            };
+            match res {
+                Ok(task) => {
+                    return response_json!(body: &task);
+                }
+                Err(e) => {
+                    // DB Error
+                    println!("{}", e.to_string());
+                    let obj = serde_json::json!({
+                        "error": e.to_string()
+                    });
+                    let obj = obj.as_str();
+                    let obj = obj.unwrap();
+                    return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
+                }
+            }
+        } else {
+            return Err(anyhow::anyhow!(serde_json::json!({
+                "error": "Malformed body."
+            })));
+        }
+    } else {
+        return Err(anyhow::anyhow!(serde_json::json!({
+            "error": "Malformed request."
+        })));
+    }
+}

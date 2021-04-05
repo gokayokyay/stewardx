@@ -63,6 +63,13 @@ pub enum ReactorMessage {
     ServerGetActiveTasks {
         resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>
     },
+    ServerUpdateTask {
+        task_id: Uuid,
+        task_name: String,
+        frequency: String,
+        task_props: serde_json::Value,
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+    },
     UpdateTaskExecution {
         task_id: Uuid
     }
@@ -88,7 +95,8 @@ impl ReactorMessage {
             ReactorMessage::ServerDeleteTask { .. } => "ServerDeleteTask",
             ReactorMessage::ServerGetActiveTasks { .. } => "ServerGetActiveTasks",
             ReactorMessage::UpdateTaskExecution { .. } => "UpdateTaskExecution",
-            ReactorMessage::ServerGetTask { .. } => "ServerGetTask"
+            ReactorMessage::ServerGetTask { .. } => "ServerGetTask",
+            ReactorMessage::ServerUpdateTask { .. } => "ServerUpdateTask"
         }
     }
 }

@@ -74,6 +74,15 @@ impl Reactor {
                         resp
                     }
                 }
+                ServerMessage::UpdateTask { task_id, task_name, frequency, task_props, resp } => {
+                    ReactorMessage::ServerUpdateTask {
+                        task_id,
+                        task_name,
+                        frequency,
+                        task_props,
+                        resp
+                    }
+                }
             };
             inner_sender.send(reactor_message).await.unwrap_or_default();
         }
@@ -362,6 +371,38 @@ impl Reactor {
 
                         let res = rx.await.unwrap();
                         resp.send(res);
+                    }
+                    ReactorMessage::ServerUpdateTask { task_id, task_name, frequency, task_props, resp } => {
+                        let (task_tx, task_rx) = oneshot::channel();
+                        inner_sender.clone().send(ReactorMessage::ServerGetTask {
+                            task_id,
+                            resp: task_tx,
+                        }).await;
+                        let task = task_rx.await.unwrap();
+                        let mut task = match task {
+                            Ok(t) => t,
+                            Err(e) => {
+                                resp.send(Err(e));
+                                return;
+                            }
+                        };
+                        task.task_name = task_name;
+                        task.frequency = frequency;
+                        let serde_string = match TaskModel::get_serde_from_props(task_id, task.task_type.clone(), task_props) {
+                            Ok(s) => s,
+                            Err(e) => {
+                                resp.send(Err(e));
+                                return;
+                            }
+                        };
+                        task.serde_string = serde_string;
+                        let (db_tx, db_rx) = oneshot::channel();
+                        db_sender.send(DBMessage::UpdateTask {
+                            task,
+                            resp: db_tx,
+                        }).await;
+                        let result = db_rx.await.unwrap();
+                        resp.send(result);
                     }
                 }
             });
