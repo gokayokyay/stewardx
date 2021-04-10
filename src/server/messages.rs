@@ -2,7 +2,7 @@ use std::any;
 
 use uuid::Uuid;
 
-use crate::{models::TaskModel, traits::BoxedStream, types::OneShotMessageResponse};
+use crate::{models::{ExecutionReport, TaskModel}, traits::BoxedStream, types::OneShotMessageResponse};
 
 // #[derive(Debug)]
 pub enum ServerMessage {
@@ -42,6 +42,15 @@ pub enum ServerMessage {
         frequency: String,
         task_props: serde_json::Value,
         resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+    },
+    GetExecutionReportsForTask {
+        task_id: Uuid,
+        offset: Option<i64>,
+        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>
+    },
+    GetExecutionReports {
+        offset: Option<i64>,
+        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>
     }
 }
 
@@ -55,7 +64,9 @@ impl ServerMessage {
             ServerMessage::DeleteTask { .. } => "DeleteTask",
             ServerMessage::CreateTask { .. } => "CreateTask",
             ServerMessage::GetActiveTasks { .. } => "GetActiveTasks",
-            ServerMessage::UpdateTask { .. } => "UpdateTask"
+            ServerMessage::UpdateTask { .. } => "UpdateTask",
+            ServerMessage::GetExecutionReportsForTask { .. } => "GetExecutionReportsForTask",
+            ServerMessage::GetExecutionReports { .. } => "GetExecutionReports"
         };
     }
 }

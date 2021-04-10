@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 use uuid::Uuid;
+use super::ServerUtils;
 
 #[macro_export]
 macro_rules! response_json {
@@ -40,7 +41,7 @@ pub async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Err
             resp: tx,
         })
         .await;
-
+    println!("uri: {}", req.uri());
     let result = rx.await.unwrap();
     match result {
         Ok(result) => response_json!(body: &result),
@@ -48,8 +49,7 @@ pub async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Err
             let obj = serde_json::json!({
                 "error": e.to_string()
             });
-            let obj = obj.as_str();
-            let obj = obj.unwrap();
+            let obj = obj.to_string();
             response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
         }
     }
@@ -73,8 +73,7 @@ pub async fn get_task(req: Request<Body>) -> Result<Response<Body>, anyhow::Erro
             let obj = serde_json::json!({
                 "error": e.to_string()
             });
-            let obj = obj.as_str();
-            let obj = obj.unwrap();
+            let obj = obj.to_string();
             response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
         }
     }
@@ -225,8 +224,7 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                     let obj = serde_json::json!({
                         "error": e.to_string()
                     });
-                    let obj = obj.as_str();
-                    let obj = obj.unwrap();
+                    let obj = obj.to_string();
                     return response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj);
                 }
             };
@@ -240,8 +238,8 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                     let obj = serde_json::json!({
                         "error": e.to_string()
                     });
-                    let obj = obj.as_str();
-                    let obj = obj.unwrap();
+                    let obj = obj.to_string();
+                    
                     return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
                 }
             }
@@ -269,8 +267,8 @@ pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyh
                 "error": e.to_string()
             });
             println!("{}", e.to_string());
-            let obj = obj.as_str();
-            let obj = obj.unwrap();
+            let obj = obj.to_string();
+            
             response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
         }
     }
@@ -285,15 +283,14 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
         task_props: Value
     }
     let (tx, rx) = tokio::sync::oneshot::channel();
-    let sender = req.data::<Sender<ServerMessage>>().unwrap();
     let task_id = match req.param("id") {
         Some(id) => Uuid::from_str(id).unwrap(),
         None => {
             let obj = serde_json::json!({
-                "error": "Missing query parameter."
+                "error": "Missing url parameter."
             });
-            let obj = obj.as_str();
-            let obj = obj.unwrap();
+            let obj = obj.to_string();
+            
             return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
         }
     };
@@ -312,8 +309,8 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                     let obj = serde_json::json!({
                         "error": e.to_string()
                     });
-                    let obj = obj.as_str();
-                    let obj = obj.unwrap();
+                    let obj = obj.to_string();
+                    
                     return response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj);
                 }
             };
@@ -327,8 +324,8 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                     let obj = serde_json::json!({
                         "error": e.to_string()
                     });
-                    let obj = obj.as_str();
-                    let obj = obj.unwrap();
+                    let obj = obj.to_string();
+                    
                     return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
                 }
             }
@@ -342,4 +339,81 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
             "error": "Malformed request."
         })));
     }
+}
+
+pub async fn get_reports_for_task(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    let task_id = match req.param("id") {
+        Some(id) => Uuid::from_str(id).unwrap(),
+        None => {
+            let obj = serde_json::json!({
+                "error": "Missing url parameter: id."
+            });
+            let obj = obj.to_string();
+            println!("obj {:?}", obj);
+            
+            return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
+        }
+    };
+    let query_map = match super::ServerUtils::get_qs(&req.uri().to_string()) {
+        Ok(q) => q,
+        Err(e) => {
+            eprintln!("{}", e.to_string());
+            let obj = serde_json::json!({
+                "error": "Malformed query."
+            });
+            let obj = obj.to_string();
+            return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
+        }
+    };
+    let offset = query_map.get("offset").and_then(|x| x.parse::<i64>().ok());
+    sender.send(ServerMessage::GetExecutionReportsForTask {
+        task_id,
+        offset,
+        resp: tx,
+    }).await;
+    let result = rx.await.unwrap();
+    match result {
+        Ok(reports) => {
+            return response_json!(body: &reports);
+        }
+        Err(e) => {
+            return Err(anyhow::anyhow!(serde_json::json!({
+                "error": "DB Error."
+            })));
+        }
+    };
+}
+
+pub async fn get_reports(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    let query_map = match super::ServerUtils::get_qs(&req.uri().to_string()) {
+        Ok(q) => q,
+        Err(e) => {
+            eprintln!("{}", e.to_string());
+            let obj = serde_json::json!({
+                "error": "Malformed query."
+            });
+            let obj = obj.to_string();
+            return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
+        }
+    };
+    let offset = query_map.get("offset").and_then(|x| x.parse::<i64>().ok());
+    sender.send(ServerMessage::GetExecutionReports {
+        offset,
+        resp: tx,
+    }).await;
+    let result = rx.await.unwrap();
+    match result {
+        Ok(reports) => {
+            return response_json!(body: &reports);
+        }
+        Err(e) => {
+            return Err(anyhow::anyhow!(serde_json::json!({
+                "error": "DB Error."
+            })));
+        }
+    };
 }

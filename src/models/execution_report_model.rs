@@ -1,9 +1,10 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
+use serde::{Serialize, Deserialize};
 
 use crate::now;
 
-#[derive(sqlx::FromRow, Debug)]
+#[derive(sqlx::FromRow, Debug, Serialize, Deserialize)]
 pub struct ExecutionReport {
     pub id: Uuid,
     pub task_id: Uuid,

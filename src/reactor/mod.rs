@@ -83,6 +83,19 @@ impl Reactor {
                         resp
                     }
                 }
+                ServerMessage::GetExecutionReportsForTask { task_id, offset, resp } => {
+                    ReactorMessage::ServerGetExecutionReportsForTask {
+                        task_id,
+                        offset,
+                        resp
+                    }
+                }
+                ServerMessage::GetExecutionReports { offset, resp } => {
+                    ReactorMessage::ServerGetExecutionReports {
+                        offset,
+                        resp
+                    }
+                }
             };
             inner_sender.send(reactor_message).await.unwrap_or_default();
         }
@@ -399,6 +412,25 @@ impl Reactor {
                         let (db_tx, db_rx) = oneshot::channel();
                         db_sender.send(DBMessage::UpdateTask {
                             task,
+                            resp: db_tx,
+                        }).await;
+                        let result = db_rx.await.unwrap();
+                        resp.send(result);
+                    }
+                    ReactorMessage::ServerGetExecutionReportsForTask { task_id, offset, resp } => {
+                        let (db_tx, db_rx) = oneshot::channel();
+                        db_sender.send(DBMessage::GetExecutionReportsForTask{
+                            task_id,
+                            offset,
+                            resp: db_tx,
+                        }).await;
+                        let result = db_rx.await.unwrap();
+                        resp.send(result);
+                    }
+                    ReactorMessage::ServerGetExecutionReports { offset, resp } => {
+                        let (db_tx, db_rx) = oneshot::channel();
+                        db_sender.send(DBMessage::GetExecutionReports{
+                            offset,
                             resp: db_tx,
                         }).await;
                         let result = db_rx.await.unwrap();

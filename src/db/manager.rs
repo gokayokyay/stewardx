@@ -242,6 +242,36 @@ impl DBManager {
     #[instrument(name = "Get execution reports.", skip(conn))]
     pub async fn get_execution_reports(
         conn: &mut Connection,
+        offset: Option<i64>,
+    ) -> Result<Vec<ExecutionReport>, sqlx::Error> {
+        let offset = offset.unwrap_or(0);
+        let rows = sqlx::query!(
+            r#"
+            SELECT * FROM steward_task_execution_report
+            ORDER BY created_at DESC
+            LIMIT 100
+            OFFSET $1
+            "#,
+            offset
+        )
+        .fetch_all(conn)
+        .await?;
+        let mut results = vec![];
+        for row in rows {
+            let result = ExecutionReport::new_string_output(
+                row.id,
+                row.task_id,
+                row.created_at,
+                row.successful,
+                row.output,
+            );
+            results.push(result);
+        }
+        Ok(results)
+    }
+    #[instrument(name = "Get execution reports for task.", skip(conn))]
+    pub async fn get_execution_reports_for_task(
+        conn: &mut Connection,
         task_id: Uuid,
         offset: Option<i64>,
     ) -> Result<Vec<ExecutionReport>, sqlx::Error> {
@@ -386,13 +416,22 @@ impl DBManager {
                         );
                         resp.send(report);
                     }
-                    DBMessage::GetExecutionReports {
+                    DBMessage::GetExecutionReportsForTask {
                         task_id,
                         offset,
                         resp,
                     } => {
                         let reports = sqlx_to_anyhow!(
-                            Self::get_execution_reports(&mut connection, task_id, offset).await
+                            Self::get_execution_reports_for_task(&mut connection, task_id, offset).await
+                        );
+                        resp.send(reports);
+                    }
+                    DBMessage::GetExecutionReports {
+                        offset,
+                        resp,
+                    } => {
+                        let reports = sqlx_to_anyhow!(
+                            Self::get_execution_reports(&mut connection, offset).await
                         );
                         resp.send(reports);
                     }
