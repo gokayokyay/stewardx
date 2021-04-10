@@ -38,7 +38,7 @@ impl Server {
             .post("/execute", exec_task)
             .post("/abort", abort_task)
             .get("/activetasks", get_active_tasks)
-            .get("/reports/:id", get_reports_for_task)
+            .get("/task/:id/reports", get_reports_for_task)
             .get("/reports", get_reports)
             // .err_handler_with_info(error_handler)
             .build()
