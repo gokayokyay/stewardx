@@ -79,6 +79,10 @@ pub enum ReactorMessage {
         offset: Option<i64>,
         resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>
     },
+    ServerGetExecutionReport {
+        report_id: Uuid,
+        resp: OneShotMessageResponse<anyhow::Result<ExecutionReport>>
+    },
     UpdateTaskExecution {
         task_id: Uuid
     }
@@ -107,7 +111,8 @@ impl ReactorMessage {
             ReactorMessage::ServerGetTask { .. } => "ServerGetTask",
             ReactorMessage::ServerUpdateTask { .. } => "ServerUpdateTask",
             ReactorMessage::ServerGetExecutionReportsForTask { .. } => "ServerGetExecutionReportsForTask",
-            ReactorMessage::ServerGetExecutionReports { .. } => "ServerGetExecutionReports"
+            ReactorMessage::ServerGetExecutionReports { .. } => "ServerGetExecutionReports",
+            ReactorMessage::ServerGetExecutionReport { .. } => "ServerGetExecutionReport",
         }
     }
 }

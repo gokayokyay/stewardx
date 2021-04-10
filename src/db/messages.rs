@@ -65,6 +65,10 @@ pub enum DBMessage {
     GetExecutionReports {
         offset: Option<i64>,
         resp: DBMessageResponse<Vec<ExecutionReport>>,
+    },
+    GetExecutionReport {
+        report_id: Uuid,
+        resp: DBMessageResponse<ExecutionReport>,
     }
 }
 
@@ -90,7 +94,8 @@ impl DBMessage {
             DBMessage::DeleteExecutionReport { .. } => "DeleteExecutionReport",
             DBMessage::DeleteExecutionReportsForTask { .. } => "DeleteExecutionReportsForTask",
             DBMessage::DeleteErrorsForTask { .. } => "DeleteErrorsForTask",
-            DBMessage::GetExecutionReports { .. } => "GetExecutionReports"
+            DBMessage::GetExecutionReports { .. } => "GetExecutionReports",
+            DBMessage::GetExecutionReport { .. } => "GetExecutionReport",
         }
     }
 }

@@ -8,7 +8,7 @@ mod handlers;
 mod messages;
 mod utils;
 use utils as ServerUtils;
-use handlers::{abort_task, create_task, delete_task, exec_task, get_active_tasks, get_reports, get_reports_for_task, get_task, get_tasks, update_task};
+use handlers::{abort_task, create_task, delete_task, exec_task, get_active_tasks, get_report, get_reports, get_reports_for_task, get_task, get_tasks, update_task};
 pub use messages::ServerMessage;
 use tracing::info;
 
@@ -40,6 +40,7 @@ impl Server {
             .get("/activetasks", get_active_tasks)
             .get("/task/:id/reports", get_reports_for_task)
             .get("/reports", get_reports)
+            .get("/reports/:id", get_report)
             // .err_handler_with_info(error_handler)
             .build()
             .unwrap();

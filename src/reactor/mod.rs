@@ -96,6 +96,12 @@ impl Reactor {
                         resp
                     }
                 }
+                ServerMessage::GetExecutionReport { report_id, resp } => {
+                    ReactorMessage::ServerGetExecutionReport {
+                        report_id,
+                        resp
+                    }
+                }
             };
             inner_sender.send(reactor_message).await.unwrap_or_default();
         }
@@ -435,6 +441,12 @@ impl Reactor {
                         }).await;
                         let result = db_rx.await.unwrap();
                         resp.send(result);
+                    }
+                    ReactorMessage::ServerGetExecutionReport { report_id, resp } => {
+                        db_sender.send(DBMessage::GetExecutionReport {
+                            report_id,
+                            resp,
+                        }).await;
                     }
                 }
             });

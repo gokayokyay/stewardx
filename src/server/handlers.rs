@@ -386,6 +386,38 @@ pub async fn get_reports_for_task(req: Request<Body>) -> Result<Response<Body>, 
     };
 }
 
+pub async fn get_report(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    let report_id = match req.param("id") {
+        Some(id) => Uuid::from_str(id).unwrap(),
+        None => {
+            let obj = serde_json::json!({
+                "error": "Missing url parameter: id."
+            });
+            let obj = obj.to_string();
+            println!("obj {:?}", obj);
+            
+            return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
+        }
+    };
+    sender.send(ServerMessage::GetExecutionReport {
+        resp: tx,
+        report_id,
+    }).await;
+    let result = rx.await.unwrap();
+    match result {
+        Ok(reports) => {
+            return response_json!(body: &reports);
+        }
+        Err(e) => {
+            return Err(anyhow::anyhow!(serde_json::json!({
+                "error": "DB Error."
+            })));
+        }
+    };
+}
+
 pub async fn get_reports(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
     let (tx, rx) = tokio::sync::oneshot::channel();
     let sender = req.data::<Sender<ServerMessage>>().unwrap();

@@ -51,6 +51,10 @@ pub enum ServerMessage {
     GetExecutionReports {
         offset: Option<i64>,
         resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>
+    },
+    GetExecutionReport {
+        report_id: Uuid,
+        resp: OneShotMessageResponse<anyhow::Result<ExecutionReport>>
     }
 }
 
@@ -66,7 +70,8 @@ impl ServerMessage {
             ServerMessage::GetActiveTasks { .. } => "GetActiveTasks",
             ServerMessage::UpdateTask { .. } => "UpdateTask",
             ServerMessage::GetExecutionReportsForTask { .. } => "GetExecutionReportsForTask",
-            ServerMessage::GetExecutionReports { .. } => "GetExecutionReports"
+            ServerMessage::GetExecutionReports { .. } => "GetExecutionReports",
+            ServerMessage::GetExecutionReport { .. } => "GetExecutionReport",
         };
     }
 }

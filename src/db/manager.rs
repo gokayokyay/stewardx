@@ -269,6 +269,29 @@ impl DBManager {
         }
         Ok(results)
     }
+    #[instrument(name = "Get execution report.", skip(conn))]
+    pub async fn get_execution_report(
+        conn: &mut Connection,
+        id: Uuid
+    ) -> Result<ExecutionReport, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT * FROM steward_task_execution_report
+            WHERE id = $1
+            "#,
+            id
+        )
+        .fetch_one(conn)
+        .await?;
+        let result = ExecutionReport::new_string_output(
+            row.id,
+            row.task_id,
+            row.created_at,
+            row.successful,
+            row.output,
+        );
+        Ok(result)
+    }
     #[instrument(name = "Get execution reports for task.", skip(conn))]
     pub async fn get_execution_reports_for_task(
         conn: &mut Connection,
@@ -449,6 +472,12 @@ impl DBManager {
                             Self::delete_errors_for_task(&mut connection, task_id).await
                         );
                         resp.send(errors);
+                    }
+                    DBMessage::GetExecutionReport { report_id, resp } => {
+                        let report = sqlx_to_anyhow!(
+                            Self::get_execution_report(&mut connection, report_id).await
+                        );
+                        resp.send(report);
                     }
                 };
             });
