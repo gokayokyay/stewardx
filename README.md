@@ -27,3 +27,4 @@ StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/).
 - [ ] Write documentation
 - [ ] Create examples
 - [ ] Create a landing page
+- [ ] Use features to make panel and docker features optional
