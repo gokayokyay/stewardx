@@ -39,28 +39,28 @@ impl TaskError {
     pub fn new(task_id: Uuid, error_type: String, error_message: String) -> Self {
         return Self::new_raw(Uuid::new_v4(), task_id, now!(), error_type, error_message);
     }
-    pub fn Generic(task_id: Uuid, error: String) -> Self {
+    pub fn generic(task_id: Uuid, error: String) -> Self {
         return Self::new(
             task_id,
             "Generic".to_string(),
             format!("Generic error occurred: {}", error),
         );
     }
-    pub fn InvalidCmd(task_id: Uuid, command: String) -> Self {
+    pub fn invalid_cmd(task_id: Uuid, command: String) -> Self {
         return Self::new(
             task_id,
             "InvalidCmd".to_string(),
             format!("Invalid command specified. Command: {}", command),
         );
     }
-    pub fn DockerImageNotFound(task_id: Uuid, image: String) -> Self {
-        return Self::new(
-            task_id,
-            "DockerImageNotFound".to_string(),
-            format!("Docker task's image not found: {}", image),
-        );
-    }
-    pub fn MalformedSerde(task_id: Uuid, serde_string: String) -> Self {
+    // pub fn docker_image_not_found(task_id: Uuid, image: String) -> Self {
+    //     return Self::new(
+    //         task_id,
+    //         "DockerImageNotFound".to_string(),
+    //         format!("Docker task's image not found: {}", image),
+    //     );
+    // }
+    pub fn malformed_serde(task_id: Uuid, serde_string: String) -> Self {
         return Self::new(
             task_id,
             "MalformedSerde".to_string(),

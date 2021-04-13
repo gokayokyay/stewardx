@@ -23,3 +23,14 @@ pub enum ExecutorMessage {
         resp: OneShotMessageResponse<Vec<Uuid>>
     }
 }
+
+impl ExecutorMessage {
+    pub fn get_type<'a>(&'a self) -> &'a str {
+        match self {
+            ExecutorMessage::Execute { .. } => "Execute",
+            ExecutorMessage::ExecutionFinished { .. } => "ExecutionFinished",
+            ExecutorMessage::Abort { .. } => "Abort",
+            ExecutorMessage::GetActiveTaskIDs { .. } => "GetActiveTaskIDs",
+        }
+    }
+}

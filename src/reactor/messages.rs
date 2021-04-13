@@ -1,8 +1,7 @@
 use chrono::NaiveDateTime;
-use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use crate::{models::{ExecutionReport, OutputModel, TaskError, TaskModel}, traits::BoxedStream, types::{BoxedTask, OneShotMessageResponse, OutputSender}};
+use crate::{models::{ExecutionReport, OutputModel, TaskError, TaskModel}, traits::BoxedStream, types::{BoxedTask, OneShotMessageResponse}};
 
 pub enum ReactorMessage {
     GetScheduledTasks {

@@ -35,23 +35,23 @@ impl Executor {
         mut rx: tokio::sync::mpsc::Receiver<ExecutorMessage>,
         tx: tokio::sync::mpsc::Sender<ExecutorMessage>,
     ) {
+        info!("Executor started listening...");
         while let Some(message) = rx.recv().await {
+            info!("Executor got message: {}", message.get_type());
             let inner_tx = tx.clone();
             match message {
                 ExecutorMessage::Execute { mut task, resp } => {
                     let id = task.get_id();
                     let (abort_tx, abort_rx) = tokio::sync::oneshot::channel::<bool>();
                     info!("Executing task: {}", id);
-                    println!("Executing task: {}", id);
                     let handle = tokio::spawn(async move {
                         let result = Self::execute(&mut task).await;
-                        resp.send(result);
+                        resp.send(result).unwrap_or_default();
                         // task.abort().await;
                         // We can listen for the abort oneshot
 
                         if let Ok(_) = abort_rx.await {
                             info!("Aborting task {}", id);
-                            println!("Aborting task {}", id);
                             task.abort().await;
                             // if let Ok(_) = inner_tx.send(ExecutorMessage::Abort { id }).await {}
                         }
@@ -69,23 +69,21 @@ impl Executor {
                 }
                 ExecutorMessage::ExecutionFinished { id } => {
                     info!("Execution of task: {} is finished", id);
-                    println!("Execution of task: {} is finished", id);
                     if let Some(index) = self.get_handle_index(id) {
                         let _val = self.task_handles.remove(index);
                     }
                 }
                 ExecutorMessage::Abort { id, resp } => {
-                    println!("Got abort {}", id);
                     if self.abort_task(id, resp).await {
                         inner_tx
                             .send(ExecutorMessage::ExecutionFinished { id })
-                            .await;
+                            .await.unwrap_or_default();
                     }
                 }
                 ExecutorMessage::GetActiveTaskIDs { resp } => {
                     resp.send(
                         self.task_handles.iter().map(|t| t.id).collect::<Vec<Uuid>>()
-                    );
+                    ).unwrap_or_default();
                 }
             }
         }
@@ -95,15 +93,15 @@ impl Executor {
         task_id: Uuid,
         resp: tokio::sync::oneshot::Sender<bool>,
     ) -> bool {
-        println!("task handles {:?}", self.task_handles);
         if let Some(index) = self.get_handle_index(task_id) {
+            info!("Found the task to abort: {}", task_id);
             let val = self.task_handles.remove(index);
-            val.abort_tx.send(true);
+            val.abort_tx.send(true).unwrap_or_default();
             // val.inner_handle.abort();
-            resp.send(true);
+            resp.send(true).unwrap_or_default();
             return true;
         }
-        resp.send(false);
+        resp.send(false).unwrap_or_default();
         return false;
     }
     fn get_handle_index(&mut self, task_id: Uuid) -> Option<usize> {

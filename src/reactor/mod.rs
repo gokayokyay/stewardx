@@ -120,6 +120,7 @@ impl Reactor {
         });
         while let Some(message) = receiver.recv().await {
             // println!("Received message {}", message.get_type());
+            info!("Reactor got message {}", message.get_type());
             let db_sender = self.db_sender.clone();
             let executor_sender = self.executor_sender.clone();
             let task_watcher_sender = self.task_watcher_sender.clone();

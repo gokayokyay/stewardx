@@ -38,7 +38,7 @@ impl CmdTask {
     }
     pub fn parse_cmd(id: &uuid::Uuid, command: &str) -> Result<(String, Vec<String>), TaskError> {
         let mut s = command.split(" ");
-        let err = TaskError::InvalidCmd(*id, command.to_string());
+        let err = TaskError::invalid_cmd(*id, command.to_string());
         let prog = match s.next() {
             Some(x) => x,
             None => return Err(err),
@@ -131,7 +131,7 @@ impl FromJson for CmdTask {
                 };
             }
         }
-        return Err(TaskError::MalformedSerde(uuid::Uuid::default(), json));
+        return Err(TaskError::malformed_serde(uuid::Uuid::default(), json));
     }
 }
 

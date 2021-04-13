@@ -84,7 +84,7 @@ impl Executable for DockerTask {
         self.container_id = id.clone();
         let container = docker.containers().get(&id);
         if let Err(a) = container.start().await {
-            return Err(TaskError::Generic(self.id, a.to_string()));
+            return Err(TaskError::generic(self.id, a.to_string()));
         }
 
         let tty_multiplexer = container.attach().await.unwrap();
@@ -151,7 +151,7 @@ impl FromJson for DockerTask {
                 };
             }
         }
-        return Err(TaskError::MalformedSerde(uuid::Uuid::default(), json));
+        return Err(TaskError::malformed_serde(uuid::Uuid::default(), json));
     }
 }
 

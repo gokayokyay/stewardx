@@ -22,3 +22,13 @@ macro_rules! now {
         chrono::Utc::now().naive_utc()
     };
 }
+#[macro_export]
+macro_rules! recv_dropped {
+    ($m:expr, $f: tt) => {
+        use tracing::error;
+        match $m {
+            Ok(_) => {},
+            Err(_) => error!("Receiver was dropped for: {}", $f)
+        }
+    }
+}

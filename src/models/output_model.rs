@@ -18,11 +18,4 @@ impl OutputModel {
             output,
         }
     }
-    pub fn manual(task_id: Uuid, timestamp: NaiveDateTime, output: String) -> Self {
-        Self {
-            task_id,
-            timestamp,
-            output,
-        }
-    }
 }

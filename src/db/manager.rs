@@ -7,6 +7,7 @@ use tracing::{info, instrument};
 use uuid::Uuid;
 
 use crate::models::{ExecutionReport, TaskError, TaskModel};
+use crate::recv_dropped;
 
 use super::DBMessage;
 
@@ -385,25 +386,37 @@ impl DBManager {
         while let Some(message) = self.rx.recv().await {
             info!("Got a {} message", message.get_type());
             let mut connection = self.pool.acquire().await.unwrap();
-            let mut pool = self.pool.clone();
+            let pool = self.pool.clone();
             tokio::spawn(async move {
                 match message {
                     DBMessage::GetTask { id, resp } => {
                         let task = sqlx_to_anyhow!(Self::get_task(&mut connection, id).await);
-                        resp.send(task);
+                        recv_dropped!(
+                            resp.send(task),
+                            "GetTask"
+                        );
                     }
                     DBMessage::GetTasks { offset, resp } => {
                         let tasks = sqlx_to_anyhow!(Self::get_tasks(&mut connection, offset).await);
-                        resp.send(tasks);
+                        recv_dropped!(
+                            resp.send(tasks),
+                            "GetTasks"
+                        );
                     }
                     DBMessage::CreateTask { task, resp } => {
                         let task = sqlx_to_anyhow!(Self::create_task(&mut connection, task).await);
-                        resp.send(task);
+                        recv_dropped!(
+                            resp.send(task),
+                            "CreateTask"
+                        );
                     }
                     DBMessage::GetScheduledTasks { when, resp } => {
                         let tasks =
                             sqlx_to_anyhow!(Self::get_scheduled_tasks(&mut connection, when).await);
-                        resp.send(tasks);
+                        recv_dropped!(
+                            resp.send(tasks),
+                            "GetScheduledTasks"
+                        );
                     }
                     DBMessage::UpdateNextExecution {
                         id,
@@ -413,31 +426,47 @@ impl DBManager {
                         let task = sqlx_to_anyhow!(
                             Self::update_next_execution(&mut connection, id, next_execution).await
                         );
-                        resp.send(task);
+                        recv_dropped!(
+                            resp.send(task),
+                            "UpdateNextExecution"
+                        );
                     }
                     DBMessage::CreateError { error, resp } => {
                         let error =
                             sqlx_to_anyhow!(Self::create_error(&mut connection, error).await);
-                        resp.send(error);
+                        recv_dropped!(
+                            resp.send(error),
+                            "CreateError"
+                        );
                     }
                     DBMessage::UpdateTask { task, resp } => {
                         let task = sqlx_to_anyhow!(Self::update_task(&mut connection, task).await);
-                        resp.send(task);
+                        recv_dropped!(
+                            resp.send(task),
+                            "UpdateTask"
+                        );
                     }
                     DBMessage::DeleteTask { id, resp } => {
                         let mut error_connection = pool.acquire().await.unwrap();
                         let mut report_connection = pool.acquire().await.unwrap();
                         let errors = Self::delete_errors_for_task(&mut error_connection, id);
                         let reports = Self::delete_execution_reports_for_task(&mut report_connection, id);
-                        tokio::join!(errors, reports);
+                        let (_found_errors, _found_reports) = tokio::join!(errors, reports);
+                        info!("Cleaned errors and reports of task {}", id);
                         let task = sqlx_to_anyhow!(Self::delete_task(&mut connection, id).await);
-                        resp.send(task);
+                        recv_dropped!(
+                            resp.send(task),
+                            "DeleteTask"
+                        );
                     }
                     DBMessage::CreateExecutionReport { report, resp } => {
                         let report = sqlx_to_anyhow!(
                             Self::create_execution_report(&mut connection, report).await
                         );
-                        resp.send(report);
+                        recv_dropped!(
+                            resp.send(report),
+                            "CreateExecutionReport"
+                        );
                     }
                     DBMessage::GetExecutionReportsForTask {
                         task_id,
@@ -447,7 +476,10 @@ impl DBManager {
                         let reports = sqlx_to_anyhow!(
                             Self::get_execution_reports_for_task(&mut connection, task_id, offset).await
                         );
-                        resp.send(reports);
+                        recv_dropped!(
+                            resp.send(reports),
+                            "GetExecutionReportsForTask"
+                        );
                     }
                     DBMessage::GetExecutionReports {
                         offset,
@@ -456,28 +488,40 @@ impl DBManager {
                         let reports = sqlx_to_anyhow!(
                             Self::get_execution_reports(&mut connection, offset).await
                         );
-                        resp.send(reports);
+                        recv_dropped!(
+                            resp.send(reports),
+                            "GetExecutionReports"
+                        );
                     }
-                    DBMessage::DeleteExecutionReport { id, resp } => {
+                    DBMessage::DeleteExecutionReport { .. } => {
                         todo!()
                     }
                     DBMessage::DeleteExecutionReportsForTask { task_id, resp } => {
                         let reports = sqlx_to_anyhow!(
                             Self::delete_execution_reports_for_task(&mut connection, task_id).await
                         );
-                        resp.send(reports);
+                        recv_dropped!(
+                            resp.send(reports),
+                            "DeleteExecutionReportsForTask"
+                        );
                     }
                     DBMessage::DeleteErrorsForTask { task_id, resp } => {
                         let errors = sqlx_to_anyhow!(
                             Self::delete_errors_for_task(&mut connection, task_id).await
                         );
-                        resp.send(errors);
+                        recv_dropped!(
+                            resp.send(errors),
+                            "DeleteErrorsForTask"
+                        );
                     }
                     DBMessage::GetExecutionReport { report_id, resp } => {
                         let report = sqlx_to_anyhow!(
                             Self::get_execution_report(&mut connection, report_id).await
                         );
-                        resp.send(report);
+                        recv_dropped!(
+                            resp.send(report),
+                            "GetExecutionReport"
+                        );
                     }
                 };
             });
