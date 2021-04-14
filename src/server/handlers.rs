@@ -8,6 +8,7 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 use uuid::Uuid;
 use super::ServerUtils;
+use tracing::error;
 
 #[macro_export]
 macro_rules! response_json {
@@ -120,6 +121,49 @@ pub async fn exec_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow:
     //     resp: tx,
     // }).await;
     // panic!("AAAA")
+}
+
+pub async fn exec_task_url(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    let task_id = match req.param("id") {
+        Some(id) => Uuid::from_str(id).unwrap(),
+        None => {
+            let obj = serde_json::json!({
+                "error": "Missing url parameter: id."
+            });
+            let obj = obj.to_string();
+            println!("obj {:?}", obj);
+            
+            return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
+        }
+    };
+    match sender.send(ServerMessage::ExecuteTask {
+        task_id,
+        resp: tx,
+    }).await {
+        Ok(_) => {}
+        Err(e) => {
+            error!("{}", e.to_string());
+            return Err(anyhow::anyhow!(serde_json::json!({
+                "error": "Reactor/Executor isn't awake."
+            })));
+        }
+    };
+    if let Ok(_) = rx.await {
+        return response_json!(
+            body: &serde_json::json!({
+                 "status": "success"
+             })
+        );
+    } else {
+        return response_json!(
+            status: hyper::StatusCode::NOT_FOUND,
+            body: &serde_json::json!({
+                 "status": "error"
+             })
+        );
+    }
 }
 
 pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
