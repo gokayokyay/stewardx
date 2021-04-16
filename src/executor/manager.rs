@@ -69,7 +69,7 @@ impl Executor {
                 }
                 ExecutorMessage::ExecutionFinished { id } => {
                     info!("Execution of task: {} is finished", id);
-                    if let Some(index) = self.get_handle_index(id) {
+                    if let Some(index) = get_handle_index(&mut self.task_handles, id) {
                         let _val = self.task_handles.remove(index);
                     }
                 }
@@ -93,7 +93,7 @@ impl Executor {
         task_id: Uuid,
         resp: tokio::sync::oneshot::Sender<bool>,
     ) -> bool {
-        if let Some(index) = self.get_handle_index(task_id) {
+        if let Some(index) = get_handle_index(&mut self.task_handles, task_id) {
             info!("Found the task to abort: {}", task_id);
             let val = self.task_handles.remove(index);
             val.abort_tx.send(true).unwrap_or_default();
@@ -104,16 +104,93 @@ impl Executor {
         resp.send(false).unwrap_or_default();
         return false;
     }
-    fn get_handle_index(&mut self, task_id: Uuid) -> Option<usize> {
-        let predicate = |t: &TaskHandle| t.id == task_id;
-        let mut i: usize = 0;
-        while i != self.task_handles.len() {
-            if predicate(&mut self.task_handles[i]) {
-                return Some(i);
-            } else {
-                i += 1;
-            }
+}
+
+fn get_handle_index(task_handles: &mut Vec<TaskHandle>, task_id: Uuid) -> Option<usize> {
+    let predicate = |t: &TaskHandle| t.id == task_id;
+    let mut i: usize = 0;
+    while i != task_handles.len() {
+        if predicate(&mut task_handles[i]) {
+            return Some(i);
+        } else {
+            i += 1;
         }
-        return None;
+    }
+    return None;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::tasks::CmdTask;
+    use tokio::sync::*;
+    use super::*;
+
+    fn create_executor() -> Executor {
+        let executor = Executor { task_handles: Vec::default() };
+        return executor;
+    }
+    fn create_boxed_task() -> BoxedTask {
+        let task = CmdTask::new(Uuid::new_v4(), Box::new("sleep 1 && touch testing.tmp".into()));
+        return Box::new(task);
+    }
+
+    #[tokio::test]
+    async fn abort_task() {
+        let (tx, rx) = mpsc::channel(32);
+        let mut executor = create_executor();
+        let inner_tx = tx.clone();
+        let _handle = tokio::spawn(async move {
+            executor.listen(rx, inner_tx).await;
+        });
+        let task = create_boxed_task();
+        let id = task.get_id();
+        let (exec_tx, _exec_rx) = oneshot::channel();
+        match tx.send(ExecutorMessage::Execute {
+            task,
+            resp: exec_tx,
+        }).await {
+            Ok(_) => {},
+            Err(_) => panic!("Should never happen")
+        };
+        let (abort_tx, abort_rx) = oneshot::channel();
+        match tx.send(ExecutorMessage::Abort {
+            id,
+            resp: abort_tx,
+        }).await {
+            Ok(_) => {},
+            Err(_) => panic!("Check abort task, probably receiver is dropped?")
+        };
+        match abort_rx.await {
+            Ok(r) => {
+                if !r {
+                    panic!("ERROR! Aborting functionality doesn't work properly!")
+                }
+            },
+            Err(_) => {
+                panic!("ERROR! Aborting functionality doesn't work properly!")
+            }
+        };
+        tokio::time::sleep(tokio::time::Duration::from_millis(110)).await;
+        let res = tokio::fs::read("testing.tmp").await;
+        assert_eq!(res.is_err(), true);
+    }
+    
+    #[tokio::test]
+    async fn task_handles() {
+        let task = create_boxed_task();
+        let id = task.get_id();
+        let handle = tokio::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        });
+        let (tx, _rx) = oneshot::channel();
+        let handle = TaskHandle {
+            inner_handle: handle,
+            id,
+            abort_tx: tx,
+        };
+        let mut task_handles = vec![handle];
+        let index = get_handle_index(&mut task_handles, id);
+        assert_eq!(index.is_some(), true);
+        assert_eq!(index.unwrap(), 0);
     }
 }
