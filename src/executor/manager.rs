@@ -124,6 +124,7 @@ mod tests {
     use crate::tasks::CmdTask;
     use tokio::sync::*;
     use super::*;
+    use tokio_stream::StreamExt;
 
     fn create_executor() -> Executor {
         let executor = Executor { task_handles: Vec::default() };
@@ -133,20 +134,12 @@ mod tests {
         let sleep_and_print_and_create_file_command = r#"
             sleep 0.2s
             echo "Hey hey hey"
-            touch testing.temp
         "#;
         let _file = tokio::fs::write("temp_script.sh", sleep_and_print_and_create_file_command).await;
         let task = CmdTask::new(Uuid::new_v4(), Box::new("/bin/bash temp_script.sh".into()));
         return Box::new(task);
     }
     async fn cleanup() {
-        match tokio::fs::remove_file("testing.temp").await {
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("{}", e.to_string());
-                println!("Couldn't cleanup after test, please locate and remove \"testing.temp\"");
-            }
-        };
         match tokio::fs::remove_file("temp_script.sh").await {
             Ok(_) => {}
             Err(e) => {
@@ -166,7 +159,7 @@ mod tests {
         });
         let task = create_boxed_long_task().await;
         let id = task.get_id();
-        let (exec_tx, _exec_rx) = oneshot::channel();
+        let (exec_tx, exec_rx) = oneshot::channel();
         match tx.send(ExecutorMessage::Execute {
             task,
             resp: exec_tx,
@@ -192,9 +185,10 @@ mod tests {
                 panic!("ERROR! Aborting functionality doesn't work properly!")
             }
         };
+        let mut res = exec_rx.await.unwrap().unwrap();
+        let none = res.next().await;
+        assert_eq!(none, None);
         tokio::time::sleep(tokio::time::Duration::from_millis(110)).await;
-        let res = tokio::fs::read("testing.tmp").await;
-        assert_eq!(res.is_err(), true);
     }
     
     #[tokio::test]
@@ -225,7 +219,7 @@ mod tests {
             executor.listen(rx, inner_tx).await;
         });
         let task = create_boxed_long_task().await;
-        let (exec_tx, _exec_rx) = oneshot::channel();
+        let (exec_tx, exec_rx) = oneshot::channel();
         match tx.send(ExecutorMessage::Execute {
             task,
             resp: exec_tx,
@@ -233,15 +227,9 @@ mod tests {
             Ok(_) => {},
             Err(_) => panic!("Should never happen")
         };
-        tokio::time::sleep(tokio::time::Duration::from_secs_f32(0.25)).await;
-        match std::path::Path::new("testing.temp").exists() {
-            true => {
-                cleanup().await;
-            },
-            false => {
-                cleanup().await;
-                panic!("ERROR! Executing task - that creates a temporary file - failed!")
-            }
-        };
+        let mut result = exec_rx.await.unwrap().unwrap();
+        let output = result.next().await;
+        assert_eq!(output.unwrap(), String::from("Hey hey hey"));
+        cleanup().await;
     }
 }

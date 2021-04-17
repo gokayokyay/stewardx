@@ -145,3 +145,56 @@ impl GetSerdeFromProps for CmdTask {
         return Ok(cmd_task.to_string());
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use crate::tasks::CmdTask;
+    use super::*;
+
+    async fn create_long_task() -> CmdTask {
+        let sleep_and_print_and_create_file_command = r#"
+            sleep 0.2s
+            echo "Hey hey hey"
+        "#;
+        let _file = tokio::fs::write("temp_script.sh", sleep_and_print_and_create_file_command).await;
+        let task = CmdTask::new(Uuid::new_v4(), Box::new("/bin/bash temp_script.sh".into()));
+        task
+    }
+    async fn cleanup() {
+        match tokio::fs::remove_file(std::path::Path::new("testing_cmd.temp")).await {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("{}", e.to_string());
+                println!("Couldn't cleanup after test, please locate and remove \"testing_cmd.temp\"");
+            }
+        };
+        match tokio::fs::remove_file("temp_script.sh").await {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("{}", e.to_string());
+                println!("Couldn't cleanup after test, please locate and remove \"temp_script.sh\"");
+            }
+        };
+    }
+    #[tokio::test]
+    async fn can_execute() {
+        let mut task = create_long_task().await;
+        let result = task.exec().await;
+        let expected_output = format!("Hey hey hey");
+        let mut output_stream = result.unwrap();
+        let output = output_stream.next().await;
+        assert_eq!(output.unwrap(), expected_output);
+        cleanup().await;
+    }
+    #[tokio::test]
+    async fn can_abort() {
+        let mut task = create_long_task().await;
+        let mut e = task.exec().await.unwrap();
+        let a = task.abort().await;
+        assert_eq!(a, true);
+        let none_output = e.next().await;
+        assert_eq!(none_output, None);
+        cleanup().await;
+    }
+}
