@@ -129,11 +129,33 @@ mod tests {
         let executor = Executor { task_handles: Vec::default() };
         return executor;
     }
-    fn create_boxed_task() -> BoxedTask {
-        let task = CmdTask::new(Uuid::new_v4(), Box::new("sleep 1 && touch testing.tmp".into()));
+    async fn create_boxed_long_task() -> BoxedTask {
+        let sleep_and_print_and_create_file_command = r#"
+            sleep 0.2s
+            echo "Hey hey hey"
+            touch testing.temp
+        "#;
+        let _file = tokio::fs::write("temp_script.sh", sleep_and_print_and_create_file_command).await;
+        let task = CmdTask::new(Uuid::new_v4(), Box::new("/bin/bash temp_script.sh".into()));
         return Box::new(task);
     }
+    async fn cleanup() {
+        match tokio::fs::remove_file("testing.temp").await {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("{}", e.to_string());
+                println!("Couldn't cleanup after test, please locate and remove \"testing.temp\"");
+            }
+        };
+        match tokio::fs::remove_file("temp_script.sh").await {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("{}", e.to_string());
+                println!("Couldn't cleanup after test, please locate and remove \"temp_script.sh\"");
+            }
+        };
 
+    }
     #[tokio::test]
     async fn abort_task() {
         let (tx, rx) = mpsc::channel(32);
@@ -142,7 +164,7 @@ mod tests {
         let _handle = tokio::spawn(async move {
             executor.listen(rx, inner_tx).await;
         });
-        let task = create_boxed_task();
+        let task = create_boxed_long_task().await;
         let id = task.get_id();
         let (exec_tx, _exec_rx) = oneshot::channel();
         match tx.send(ExecutorMessage::Execute {
@@ -177,7 +199,7 @@ mod tests {
     
     #[tokio::test]
     async fn task_handles() {
-        let task = create_boxed_task();
+        let task = create_boxed_long_task().await;
         let id = task.get_id();
         let handle = tokio::spawn(async move {
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -192,5 +214,34 @@ mod tests {
         let index = get_handle_index(&mut task_handles, id);
         assert_eq!(index.is_some(), true);
         assert_eq!(index.unwrap(), 0);
+    }
+
+    #[tokio::test]
+    async fn execute() {
+        let (tx, rx) = mpsc::channel(32);
+        let mut executor = create_executor();
+        let inner_tx = tx.clone();
+        let _handle = tokio::spawn(async move {
+            executor.listen(rx, inner_tx).await;
+        });
+        let task = create_boxed_long_task().await;
+        let (exec_tx, _exec_rx) = oneshot::channel();
+        match tx.send(ExecutorMessage::Execute {
+            task,
+            resp: exec_tx,
+        }).await {
+            Ok(_) => {},
+            Err(_) => panic!("Should never happen")
+        };
+        tokio::time::sleep(tokio::time::Duration::from_secs_f32(0.25)).await;
+        match std::path::Path::new("testing.temp").exists() {
+            true => {
+                cleanup().await;
+            },
+            false => {
+                cleanup().await;
+                panic!("ERROR! Executing task - that creates a temporary file - failed!")
+            }
+        };
     }
 }
