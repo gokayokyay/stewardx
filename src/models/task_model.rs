@@ -43,6 +43,8 @@ impl TaskModel {
         };
         return next_execution;
     }
+    // TODO: This fn is used in tests but can be used in app too, when we use it please remove the line below
+    #[allow(dead_code)]
     pub fn from_boxed_task(task: crate::types::BoxedTask, name: String, frequency: String) -> Self {
         let serde_string = task.to_string();
         let mut task = Self {

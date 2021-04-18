@@ -1,15 +1,25 @@
-use db::DBManager;
+// use db::DBManager;
 use executor::Executor;
-use models::{OutputModel, TaskModel};
+use models::{
+    OutputModel,
+    // TaskModel
+};
 use once_cell::sync::Lazy;
 use reactor::Reactor;
 use server::Server;
-use shiplift::Docker;
-use std::{str::FromStr, sync::Arc};
-use tasks::{CmdTask, DockerImageType, DockerTask, TaskWatcher};
-use tokio::task::spawn_blocking;
+// use shiplift::Docker;
+use std::{sync::Arc};
+use tasks::{
+    // CmdTask,
+    // DockerImageType,
+    // DockerTask,
+    TaskWatcher
+};
 use tracing::subscriber::set_global_default;
-use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
+use tracing_bunyan_formatter::{
+    BunyanFormattingLayer,
+    // JsonStorageLayer
+};
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
 mod db;
@@ -26,7 +36,7 @@ static GLOBAL_DOCKER: Lazy<shiplift::Docker> = Lazy::new(|| shiplift::Docker::de
 #[tokio::main]
 async fn main() {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let formatting_layer = BunyanFormattingLayer::new(
+    let _formatting_layer = BunyanFormattingLayer::new(
         "stewardx".into(),
         // Output the formatted spans to stdout.
         std::io::stdout,
@@ -37,7 +47,7 @@ async fn main() {
     set_global_default(subscriber).expect("Failed to set subscriber");
     let pool = match db::connect(&std::env::var("DATABASE_URL").unwrap()).await {
         Ok(p) => p,
-        Err(e) => {
+        Err(_e) => {
             panic!("Database connection failed. Check if your connection URL is correct and your DB is reachable.")
         }
     };
@@ -45,7 +55,7 @@ async fn main() {
     let (ex_tx, ex_rx) = tokio::sync::mpsc::channel(32);
     let (tw_tx, tw_rx) = tokio::sync::mpsc::channel(32);
     let (o_tx, mut o_rx) = tokio::sync::broadcast::channel::<OutputModel>(128);
-    let (sv_tx, mut sv_rx) = tokio::sync::mpsc::channel(32);
+    let (sv_tx, sv_rx) = tokio::sync::mpsc::channel(32);
 
     tokio::spawn(async {
         // let task = CmdTask::new(uuid::Uuid::new_v4(), Box::new("/bin/bash temp.sh".to_string()));
@@ -79,9 +89,9 @@ async fn main() {
         server.listen(String::from("0.0.0.0"), 3000).await;
     });
 
-    tokio::spawn(async {
+    let _ = tokio::spawn(async {
         let server_receiver = Arc::new(tokio::sync::Mutex::new(sv_rx));
-        let (tx, mut rx) = tokio::sync::mpsc::channel(128);
+        let (tx, rx) = tokio::sync::mpsc::channel(128);
         let mut reactor = Reactor {
             db_sender: db_tx,
             executor_sender: ex_tx,

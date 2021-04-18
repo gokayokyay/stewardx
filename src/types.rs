@@ -2,7 +2,7 @@ use crate::{
     db::DBMessage, executor::ExecutorMessage, models::OutputModel, reactor::ReactorMessage,
     server::ServerMessage, tasks::TaskWatcherMessage, traits::Executable,
 };
-use futures::{channel::mpsc::Receiver, Stream};
+use futures::Stream;
 
 pub type BoxedStream = Box<dyn Stream<Item = String> + Unpin + Send>;
 pub type ExecutableTask = dyn Executable + Send + Sync;

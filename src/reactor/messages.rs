@@ -37,8 +37,7 @@ pub enum ReactorMessage {
         should_update: bool,
     },
     CreateError {
-        error: TaskError,
-        resp: ComposedResponse<TaskError>,
+        error: TaskError
     },
     ServerGetTasks {
         offset: Option<i64>,

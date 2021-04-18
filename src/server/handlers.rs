@@ -1,9 +1,8 @@
 use std::str::FromStr;
 
 use super::ServerMessage;
-use super::ServerUtils;
 use hyper::{body::HttpBody, Body, Request, Response};
-use routerify::{ext::RequestExt, Router};
+use routerify::{ext::RequestExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;

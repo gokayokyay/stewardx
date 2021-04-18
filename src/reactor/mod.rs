@@ -32,9 +32,15 @@ pub struct Reactor {
 impl Reactor {
     pub async fn schedule(sender: ReactorSender) {
         loop {
-            sender
+            match sender
                 .send(ReactorMessage::ExecuteScheduledTasks { when: now!() })
-                .await;
+                .await {
+                    Ok(_) => {},
+                    Err(e) => {
+                        error!("FATAL: Reactor couldn't get the ExecuteScheduledTasks message.");
+                        panic!("{}", e.to_string());
+                    }
+                };
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
     }
@@ -119,7 +125,19 @@ impl Reactor {
         });
         while let Some(message) = receiver.recv().await {
             // println!("Received message {}", message.get_type());
-            info!("Reactor got message {}", message.get_type());
+            macro_rules! didnt_receive {
+                ($send: expr, $sender_type: expr, $msg: tt) => {
+                    match $send {
+                        Ok(_) => {},
+                        Err(e) => {
+                            error!("{} didnt receive the {} message!", $sender_type, $msg);
+                            panic!("{}", e.to_string());
+                        }
+                    }
+                }
+            }
+            let msg_type = message.get_type().to_string();
+            info!("Reactor got message {}", msg_type);
             let db_sender = self.db_sender.clone();
             let executor_sender = self.executor_sender.clone();
             let task_watcher_sender = self.task_watcher_sender.clone();
@@ -129,24 +147,27 @@ impl Reactor {
                 match message {
                     // TODO wrong use refactor later
                     ReactorMessage::GetScheduledTasks { when, resp } => {
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(crate::db::DBMessage::GetScheduledTasks { when, resp })
-                            .await;
+                            .await, "Database", "GetScheduledTasks");
                     }
                     ReactorMessage::ExecuteScheduledTasks { when } => {
                         let (tx, rx) = oneshot::channel();
-                        inner_sender
+                        didnt_receive!(inner_sender
                             .send(ReactorMessage::GetScheduledTasks { when, resp: tx })
-                            .await;
+                            .await, "Reactor", "GetScheduledTasks");
                         let task_models = match rx.await {
                             Ok(models) => match models {
                                 Ok(models) => models,
                                 Err(e) => {
+                                    // If somehow we got here, I'm assuming that the DB has an error
+                                    // therefore I wont be saving the error.
                                     error!("{}", e.to_string());
                                     return;
                                 }
                             },
                             Err(e) => {
+                                // Same as above
                                 error!("{}", e.to_string());
                                 return;
                             }
@@ -160,9 +181,9 @@ impl Reactor {
                         for task in tasks.next() {
                             if let Some(task) = task {
                                 let _id = task.get_id();
-                                inner_sender
+                                didnt_receive!(inner_sender
                                     .send(ReactorMessage::ExecuteTask { task })
-                                    .await;
+                                    .await, "Reactor", "ExecuteTask");
                             }
                         }
                     }
@@ -171,17 +192,19 @@ impl Reactor {
                         info!("Sending Execute message to Executor for task {}", id);
                         let (t_tx, t_rx) = oneshot::channel();
                         let message = ExecutorMessage::Execute { task, resp: t_tx };
-                        executor_sender.send(message).await;
-                        inner_sender
+                        didnt_receive!(executor_sender.send(message).await, "Executor", msg_type);
+                        didnt_receive!(inner_sender
                             .send(ReactorMessage::UpdateTaskExecution { task_id: id })
-                            .await;
+                            .await, "Reactor", msg_type);
                         let result = match t_rx.await {
                             Ok(r) => {
                                 match r {
                                     Ok(o) => o,
                                     Err(e) => {
                                         error!("{}", e.to_string());
-                                        // TODO: Handle error and add it to db
+                                        didnt_receive!(inner_sender.send(ReactorMessage::CreateError {
+                                            error: e,
+                                        }).await, "Reactor", "CreateError");
                                         return;
                                     }
                                 }
@@ -190,9 +213,11 @@ impl Reactor {
                                 // Receiver dropped
                                 error!("{}", e.to_string());
                                 let report = ExecutionReport::new(id, false, Vec::default());
-                                inner_sender
+                                // We wont be creating an error, because in this case, well, I forgot
+                                // But I didn't add a TODO here so it should be the expected behavior?
+                                didnt_receive!(inner_sender
                                     .send(ReactorMessage::CreateExecutionReport { report })
-                                    .await;
+                                    .await, "Reactor", "CreateExecutionReport");
                                 return;
                             }
                         };
@@ -201,12 +226,12 @@ impl Reactor {
                         // task_watcher_sender.send(TaskWatcherMessage::WatchExecution {
 
                         // }).await;
-                        inner_sender
+                        didnt_receive!(inner_sender
                             .send(ReactorMessage::WatchExecution {
                                 task_id: id,
                                 exec_process: Ok(result),
                             })
-                            .await;
+                            .await, "Reactor", "WatchExecution");
                     }
                     ReactorMessage::CreateExecutionReport { report } => {
                         info!(
@@ -214,10 +239,10 @@ impl Reactor {
                             report.task_id
                         );
                         let (tx, rx) = oneshot::channel();
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::CreateExecutionReport { resp: tx, report })
-                            .await;
-                        let report = rx.await.unwrap();
+                            .await, "Database", "CreateExecutionReport");
+                        let _report = rx.await.unwrap();
                         // resp.send(report);
                     }
                     ReactorMessage::WatchExecution {
@@ -226,43 +251,49 @@ impl Reactor {
                     } => {
                         let (o_tx, mut o_rx) = broadcast::channel(128);
                         let (er_tx, er_rx) = oneshot::channel();
-                        task_watcher_sender
+                        didnt_receive!(task_watcher_sender
                             .send(TaskWatcherMessage::WatchExecution {
                                 task_id,
                                 exec_process,
                                 output_resp: o_tx,
                                 resp: er_tx,
                             })
-                            .await;
+                            .await, "TaskWatcher", "WatchExecution");
                         while let Ok(output) = o_rx.recv().await {
-                            inner_sender
+                            didnt_receive!(inner_sender
                                 .send(ReactorMessage::OutputReceived { model: output })
-                                .await;
+                                .await, "Reactor", "OutputReceived");
                         }
                         // If output receiver is dropped, it means that execution has finished!
                         if let Ok(report) = er_rx.await {
-                            inner_sender
+                            didnt_receive!(inner_sender
                                 .send(ReactorMessage::CreateExecutionReport { report })
-                                .await;
+                                .await, "Reactor", "CreateExecutionReport");
                         }
-                        inner_sender
+                        didnt_receive!(inner_sender
                             .send(ReactorMessage::ExecutionFinished {
                                 id: task_id,
                                 should_update: false,
                             })
-                            .await;
+                            .await, "Reactor", "ExecutionFinished");
                     }
                     ReactorMessage::OutputReceived { model } => {
-                        output_emitter.send(model);
+                        match output_emitter.send(model) {
+                            Ok(_) => {},
+                            Err(e) => {
+                                error!("Couldn't send OutputModel to OutputListener, is it awake?");
+                                panic!("{}", e.to_string());
+                            }
+                        };
                     }
                     ReactorMessage::ExecutionFinished { id, should_update } => {
                         info!("{}'s execution has finished", id);
                         let message = ExecutorMessage::ExecutionFinished { id };
-                        executor_sender.send(message).await;
+                        didnt_receive!(executor_sender.send(message).await, "Executor", "ExecutionFinished");
                         if should_update {
-                            inner_sender
+                            didnt_receive!(inner_sender
                                 .send(ReactorMessage::UpdateTaskExecution { task_id: id })
-                                .await;
+                                .await, "Reactor", "UpdateTaskExecution");
                         }
                     }
                     ReactorMessage::ServerGetTasks { offset, resp } => {
@@ -305,9 +336,8 @@ impl Reactor {
                                 eprintln!("{}", e.to_string());
                                 error!("{}", e.to_string());
                                 let error = TaskError::generic(task_id, e.to_string());
-                                let (tx, _rx) = oneshot::channel();
                                 inner_sender
-                                    .send(ReactorMessage::CreateError { error, resp: tx })
+                                    .send(ReactorMessage::CreateError { error })
                                     .await;
                                 resp.send(false);
                             }
@@ -496,8 +526,9 @@ impl Reactor {
                             .send(DBMessage::GetExecutionReport { report_id, resp })
                             .await;
                     }
-                    ReactorMessage::CreateError { error, resp } => {
-                        db_sender.send(DBMessage::CreateError { error, resp }).await;
+                    ReactorMessage::CreateError { error } => {
+                        let (tx, rx) = oneshot::channel();
+                        db_sender.send(DBMessage::CreateError { error, resp: tx }).await;
                     }
                 }
             });
@@ -522,11 +553,6 @@ mod tests {
             tokio::fs::write("temp_script.sh", sleep_and_print_and_create_file_command).await;
         let task = CmdTask::new(Uuid::new_v4(), Box::new("/bin/bash temp_script.sh".into()));
         return task;
-    }
-
-    async fn create_boxed_long_task() -> BoxedTask {
-        let task = create_long_task().await;
-        return Box::new(task);
     }
 
     #[tokio::test]
@@ -585,12 +611,14 @@ mod tests {
                 _ => panic!("Shouldn't happen! But when it does, please update the test :)"),
             };
         });
-        tokio::time::timeout(
+        let result = tokio::time::timeout(
             tokio::time::Duration::from_secs_f32(1.2),
             tokio::spawn(async move {
                 reactor.listen(r_rx).await;
             }),
         )
         .await;
+        // Meaning that (kinda) it has a timeout
+        assert_eq!(result.is_err(), true);
     }
 }

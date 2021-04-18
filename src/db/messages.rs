@@ -5,7 +5,8 @@ use crate::{
     models::{ExecutionReport, TaskError, TaskModel},
     types::OneShotMessageResponse,
 };
-
+// TODO: Remove allow when we need unconstructed variants
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum DBMessage {
     GetTask {
