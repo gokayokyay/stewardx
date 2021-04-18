@@ -1,14 +1,17 @@
 use futures::StreamExt;
 use tokio::fs::File;
 // use tokio_stream::StreamExt;
-use uuid::Uuid;
-use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
-use shiplift::{BuildOptions, ContainerOptions, PullOptions, tty::TtyChunk};
+use serde::{Deserialize, Serialize};
+use shiplift::{tty::TtyChunk, BuildOptions, ContainerOptions, PullOptions};
 use tempfile::{Builder, TempDir};
+use uuid::Uuid;
 
-use crate::{GLOBAL_DOCKER, traits::{BoxedStream, Executable, FromJson, GetSerdeFromProps}};
 use crate::models::TaskError;
+use crate::{
+    traits::{BoxedStream, Executable, FromJson, GetSerdeFromProps},
+    GLOBAL_DOCKER,
+};
 
 use super::DockerImageType;
 
@@ -22,7 +25,12 @@ pub struct DockerTask {
 
 impl DockerTask {
     pub fn new(id: Uuid, image: DockerImageType, env: Vec<String>) -> Self {
-        Self { id, image, env, container_id: String::default() }
+        Self {
+            id,
+            image,
+            env,
+            container_id: String::default(),
+        }
     }
     pub fn create_temp_dir(named: String) -> Result<TempDir, anyhow::Error> {
         let tmp_dir = Builder::new().prefix(&named).tempdir()?;
@@ -53,15 +61,22 @@ impl Executable for DockerTask {
                 };
                 let path = temp_dir.path().join("Dockerfile");
                 tokio::fs::write(path.clone(), contents).await;
-                let image = format!("stewardx:{}", self.id.to_simple().encode_lower(&mut Uuid::encode_buffer()));
-                let mut file = docker.images().build(&shiplift::BuildOptions::builder(temp_dir.path().to_str().unwrap().to_string()).tag(image.clone()).build());
+                let image = format!(
+                    "stewardx:{}",
+                    self.id.to_simple().encode_lower(&mut Uuid::encode_buffer())
+                );
+                let mut file = docker.images().build(
+                    &shiplift::BuildOptions::builder(temp_dir.path().to_str().unwrap().to_string())
+                        .tag(image.clone())
+                        .build(),
+                );
                 while let Some(build_result) = file.next().await {
                     match build_result {
                         Ok(output) => println!("{:?}", output),
                         Err(e) => {
                             eprintln!("Error: {}", e);
                             panic!("{}", e.to_string());
-                        },
+                        }
                     }
                 }
                 image
@@ -75,7 +90,8 @@ impl Executable for DockerTask {
                     println!("{:?}", pull_result);
                 }
                 image
-            }.to_string()
+            }
+            .to_string(),
         };
         let options = ContainerOptions::builder(&image).env(&self.env).build();
         let info = docker.containers().create(&options).await.unwrap();
@@ -96,13 +112,11 @@ impl Executable for DockerTask {
                     let output = match chunk {
                         TtyChunk::StdOut(bytes) => std::str::from_utf8(&bytes).unwrap().to_string(),
                         TtyChunk::StdErr(bytes) => std::str::from_utf8(&bytes).unwrap().to_string(),
-                        TtyChunk::StdIn(_) => unreachable!()
+                        TtyChunk::StdIn(_) => unreachable!(),
                     };
                     return output;
                 }
-                Err(e) => {
-                    return e.to_string()
-                }
+                Err(e) => return e.to_string(),
             }
         });
 
@@ -115,7 +129,7 @@ impl Executable for DockerTask {
         container.stop(None).await;
         match container.kill(None).await {
             Ok(_) => true,
-            Err(_) => false
+            Err(_) => false,
         }
     }
 
@@ -155,13 +169,12 @@ impl FromJson for DockerTask {
     }
 }
 
-
 impl GetSerdeFromProps for DockerTask {
     fn get_serde_from_props(id: Uuid, value: serde_json::Value) -> Result<String, anyhow::Error> {
         // return Err(Self::prop_not_found(String::from("aa")));
         let image = &value["image"];
         if image.is_null() {
-            return Err(Self::prop_not_found("image"))
+            return Err(Self::prop_not_found("image"));
         }
         let image_type = &image["t"];
         if image_type.is_null() {
@@ -173,14 +186,22 @@ impl GetSerdeFromProps for DockerTask {
         }
         match image_type.as_str().unwrap() {
             "File" => {
-                let docker_task = Self::new(id, DockerImageType::File(content.as_str().unwrap().to_string()), Vec::default());
+                let docker_task = Self::new(
+                    id,
+                    DockerImageType::File(content.as_str().unwrap().to_string()),
+                    Vec::default(),
+                );
                 return Ok(docker_task.to_string());
-            },
+            }
             "Image" => {
-                let docker_task = Self::new(id, DockerImageType::Image(content.as_str().unwrap().to_string()), Vec::default());
+                let docker_task = Self::new(
+                    id,
+                    DockerImageType::Image(content.as_str().unwrap().to_string()),
+                    Vec::default(),
+                );
                 return Ok(docker_task.to_string());
-            },
-            _ => return Err(anyhow::anyhow!("Unknown image type: {}", &image_type))
+            }
+            _ => return Err(anyhow::anyhow!("Unknown image type: {}", &image_type)),
         };
     }
 }

@@ -1,9 +1,21 @@
 mod messages;
 
 use std::sync::Arc;
-use tokio::sync::{Mutex, oneshot, broadcast};
+use tokio::sync::{broadcast, oneshot, Mutex};
 
-use crate::{ModelToTask, db::DBMessage, executor::ExecutorMessage, models::{ExecutionReport, TaskModel, TaskError}, now, server::ServerMessage, tasks::TaskWatcherMessage, types::{DBSender, ExecutorSender, OutputSender, ReactorReceiver, ReactorSender, ServerReceiver, TaskWatcherSender}};
+use crate::{
+    db::DBMessage,
+    executor::ExecutorMessage,
+    models::{ExecutionReport, TaskError, TaskModel},
+    now,
+    server::ServerMessage,
+    tasks::TaskWatcherMessage,
+    types::{
+        DBSender, ExecutorSender, OutputSender, ReactorReceiver, ReactorSender, ServerReceiver,
+        TaskWatcherSender,
+    },
+    ModelToTask,
+};
 pub use messages::ReactorMessage;
 
 use tracing::{error, info};
@@ -14,15 +26,15 @@ pub struct Reactor {
     pub task_watcher_sender: TaskWatcherSender,
     pub output_emitter: OutputSender,
     pub server_receiver: Arc<Mutex<ServerReceiver>>,
-    pub inner_sender: ReactorSender
+    pub inner_sender: ReactorSender,
 }
 
 impl Reactor {
     pub async fn schedule(sender: ReactorSender) {
         loop {
-            sender.send(ReactorMessage::ExecuteScheduledTasks {
-                when: now!()
-            }).await;
+            sender
+                .send(ReactorMessage::ExecuteScheduledTasks { when: now!() })
+                .await;
             tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
     }
@@ -30,77 +42,64 @@ impl Reactor {
         while let Some(message) = receiver.recv().await {
             let reactor_message = match message {
                 ServerMessage::GetTasks { offset, resp } => {
-                    ReactorMessage::ServerGetTasks {
-                        offset,
-                        resp,
-                    }
+                    ReactorMessage::ServerGetTasks { offset, resp }
                 }
                 ServerMessage::ExecuteTask { task_id, resp } => {
-                    ReactorMessage::ServerExecuteTask {
-                        task_id,
-                        resp,
-                    }
+                    ReactorMessage::ServerExecuteTask { task_id, resp }
                 }
                 ServerMessage::AbortTask { task_id, resp } => {
-                    ReactorMessage::ServerAbortTask {
-                        task_id,
-                        resp,
-                    }
+                    ReactorMessage::ServerAbortTask { task_id, resp }
                 }
                 ServerMessage::DeleteTask { task_id, resp } => {
-                    ReactorMessage::ServerDeleteTask {
-                        task_id,
-                        resp
-                    }
+                    ReactorMessage::ServerDeleteTask { task_id, resp }
                 }
-                
-                ServerMessage::CreateTask { task_name, frequency, task_type, task_props, resp } => {
-                    ReactorMessage::ServerCreateTask {
-                        task_name,
-                        frequency,
-                        task_type,
-                        task_props,
-                        resp
-                    }
-                }
+
+                ServerMessage::CreateTask {
+                    task_name,
+                    frequency,
+                    task_type,
+                    task_props,
+                    resp,
+                } => ReactorMessage::ServerCreateTask {
+                    task_name,
+                    frequency,
+                    task_type,
+                    task_props,
+                    resp,
+                },
                 ServerMessage::GetActiveTasks { resp } => {
-                    ReactorMessage::ServerGetActiveTasks {
-                        resp
-                    }
+                    ReactorMessage::ServerGetActiveTasks { resp }
                 }
                 ServerMessage::GetTask { task_id, resp } => {
-                    ReactorMessage::ServerGetTask {
-                        task_id,
-                        resp
-                    }
+                    ReactorMessage::ServerGetTask { task_id, resp }
                 }
-                ServerMessage::UpdateTask { task_id, task_name, frequency, task_props, resp } => {
-                    ReactorMessage::ServerUpdateTask {
-                        task_id,
-                        task_name,
-                        frequency,
-                        task_props,
-                        resp
-                    }
-                }
-                ServerMessage::GetExecutionReportsForTask { task_id, offset, resp } => {
-                    ReactorMessage::ServerGetExecutionReportsForTask {
-                        task_id,
-                        offset,
-                        resp
-                    }
-                }
+                ServerMessage::UpdateTask {
+                    task_id,
+                    task_name,
+                    frequency,
+                    task_props,
+                    resp,
+                } => ReactorMessage::ServerUpdateTask {
+                    task_id,
+                    task_name,
+                    frequency,
+                    task_props,
+                    resp,
+                },
+                ServerMessage::GetExecutionReportsForTask {
+                    task_id,
+                    offset,
+                    resp,
+                } => ReactorMessage::ServerGetExecutionReportsForTask {
+                    task_id,
+                    offset,
+                    resp,
+                },
                 ServerMessage::GetExecutionReports { offset, resp } => {
-                    ReactorMessage::ServerGetExecutionReports {
-                        offset,
-                        resp
-                    }
+                    ReactorMessage::ServerGetExecutionReports { offset, resp }
                 }
                 ServerMessage::GetExecutionReport { report_id, resp } => {
-                    ReactorMessage::ServerGetExecutionReport {
-                        report_id,
-                        resp
-                    }
+                    ReactorMessage::ServerGetExecutionReport { report_id, resp }
                 }
             };
             inner_sender.send(reactor_message).await.unwrap_or_default();
@@ -130,27 +129,23 @@ impl Reactor {
                 match message {
                     // TODO wrong use refactor later
                     ReactorMessage::GetScheduledTasks { when, resp } => {
-                        db_sender.send(crate::db::DBMessage::GetScheduledTasks {
-                            when,
-                            resp,
-                        }).await;
+                        db_sender
+                            .send(crate::db::DBMessage::GetScheduledTasks { when, resp })
+                            .await;
                     }
                     ReactorMessage::ExecuteScheduledTasks { when } => {
                         let (tx, rx) = oneshot::channel();
-                        inner_sender.send(ReactorMessage::GetScheduledTasks {
-                            when,
-                            resp: tx,
-                        }).await;
+                        inner_sender
+                            .send(ReactorMessage::GetScheduledTasks { when, resp: tx })
+                            .await;
                         let task_models = match rx.await {
-                            Ok(models) => {
-                                match models {
-                                    Ok(models) => models,
-                                    Err(e) => {
-                                        error!("{}", e.to_string());
-                                        return;
-                                    }
+                            Ok(models) => match models {
+                                Ok(models) => models,
+                                Err(e) => {
+                                    error!("{}", e.to_string());
+                                    return;
                                 }
-                            }
+                            },
                             Err(e) => {
                                 error!("{}", e.to_string());
                                 return;
@@ -165,21 +160,21 @@ impl Reactor {
                         for task in tasks.next() {
                             if let Some(task) = task {
                                 let _id = task.get_id();
-                                inner_sender.send(ReactorMessage::ExecuteTask {
-                                    task,
-                                }).await;
+                                inner_sender
+                                    .send(ReactorMessage::ExecuteTask { task })
+                                    .await;
                             }
                         }
-                    },
+                    }
                     ReactorMessage::ExecuteTask { task } => {
                         let id = task.get_id();
                         info!("Sending Execute message to Executor for task {}", id);
                         let (t_tx, t_rx) = oneshot::channel();
                         let message = ExecutorMessage::Execute { task, resp: t_tx };
                         executor_sender.send(message).await;
-                        inner_sender.send(ReactorMessage::UpdateTaskExecution {
-                            task_id: id
-                        }).await;
+                        inner_sender
+                            .send(ReactorMessage::UpdateTaskExecution { task_id: id })
+                            .await;
                         let result = match t_rx.await {
                             Ok(r) => {
                                 match r {
@@ -190,60 +185,73 @@ impl Reactor {
                                         return;
                                     }
                                 }
-                            },
+                            }
                             Err(e) => {
                                 // Receiver dropped
                                 error!("{}", e.to_string());
                                 let report = ExecutionReport::new(id, false, Vec::default());
-                                inner_sender.send(ReactorMessage::CreateExecutionReport {
-                                    report,
-                                }).await;
+                                inner_sender
+                                    .send(ReactorMessage::CreateExecutionReport { report })
+                                    .await;
                                 return;
                             }
                         };
                         // let (o_tx, mut o_rx) = tokio::sync::broadcast::channel(128);
                         // let (er_tx, er_rx) = tokio::sync::oneshot::channel();
                         // task_watcher_sender.send(TaskWatcherMessage::WatchExecution {
-                            
+
                         // }).await;
-                        inner_sender.send(ReactorMessage::WatchExecution {
-                            task_id: id,
-                            exec_process: Ok(result),
-                        }).await;
-                    },
+                        inner_sender
+                            .send(ReactorMessage::WatchExecution {
+                                task_id: id,
+                                exec_process: Ok(result),
+                            })
+                            .await;
+                    }
                     ReactorMessage::CreateExecutionReport { report } => {
-                        info!("Sending CreateExecutionReport message to DBManager: {}", report.task_id);
+                        info!(
+                            "Sending CreateExecutionReport message to DBManager: {}",
+                            report.task_id
+                        );
                         let (tx, rx) = oneshot::channel();
                         db_sender
                             .send(DBMessage::CreateExecutionReport { resp: tx, report })
                             .await;
                         let report = rx.await.unwrap();
                         // resp.send(report);
-                    },
-                    ReactorMessage::WatchExecution { task_id, exec_process } => {
+                    }
+                    ReactorMessage::WatchExecution {
+                        task_id,
+                        exec_process,
+                    } => {
                         let (o_tx, mut o_rx) = broadcast::channel(128);
                         let (er_tx, er_rx) = oneshot::channel();
-                        task_watcher_sender.send(TaskWatcherMessage::WatchExecution {
-                            task_id,
-                            exec_process,
-                            output_resp: o_tx,
-                            resp: er_tx,
-                        }).await;
+                        task_watcher_sender
+                            .send(TaskWatcherMessage::WatchExecution {
+                                task_id,
+                                exec_process,
+                                output_resp: o_tx,
+                                resp: er_tx,
+                            })
+                            .await;
                         while let Ok(output) = o_rx.recv().await {
-                            inner_sender.send(ReactorMessage::OutputReceived {
-                                model: output
-                            }).await;
+                            inner_sender
+                                .send(ReactorMessage::OutputReceived { model: output })
+                                .await;
                         }
+                        // If output receiver is dropped, it means that execution has finished!
                         if let Ok(report) = er_rx.await {
-                            inner_sender.send(ReactorMessage::CreateExecutionReport {
-                                report,
-                            }).await;
+                            inner_sender
+                                .send(ReactorMessage::CreateExecutionReport { report })
+                                .await;
                         }
-                        inner_sender.send(ReactorMessage::ExecutionFinished {
-                            id: task_id,
-                            should_update: false
-                        }).await;
-                    },
+                        inner_sender
+                            .send(ReactorMessage::ExecutionFinished {
+                                id: task_id,
+                                should_update: false,
+                            })
+                            .await;
+                    }
                     ReactorMessage::OutputReceived { model } => {
                         output_emitter.send(model);
                     }
@@ -252,9 +260,9 @@ impl Reactor {
                         let message = ExecutorMessage::ExecutionFinished { id };
                         executor_sender.send(message).await;
                         if should_update {
-                            inner_sender.send(ReactorMessage::UpdateTaskExecution {
-                                task_id: id,
-                            }).await;
+                            inner_sender
+                                .send(ReactorMessage::UpdateTaskExecution { task_id: id })
+                                .await;
                         }
                     }
                     ReactorMessage::ServerGetTasks { offset, resp } => {
@@ -283,9 +291,9 @@ impl Reactor {
                                 ModelToTask!(task => boxed_task);
                                 match boxed_task {
                                     Some(task) => {
-                                        inner_sender.send(ReactorMessage::ExecuteTask {
-                                            task,
-                                        }).await;
+                                        inner_sender
+                                            .send(ReactorMessage::ExecuteTask { task })
+                                            .await;
                                         resp.send(true);
                                     }
                                     None => {
@@ -294,86 +302,99 @@ impl Reactor {
                                 }
                             }
                             Err(e) => {
-                                // TODO save error
-                                error!("{}", e.to_string());
                                 eprintln!("{}", e.to_string());
                                 error!("{}", e.to_string());
                                 let error = TaskError::generic(task_id, e.to_string());
                                 let (tx, _rx) = oneshot::channel();
-                                inner_sender.send(ReactorMessage::CreateError {
-                                    error,
-                                    resp: tx,
-                                }).await;
+                                inner_sender
+                                    .send(ReactorMessage::CreateError { error, resp: tx })
+                                    .await;
                                 resp.send(false);
                             }
                         }
                     }
                     ReactorMessage::ServerAbortTask { task_id, resp } => {
-                        executor_sender.send(ExecutorMessage::Abort {
-                            id: task_id,
-                            resp,
-                        }).await;
+                        executor_sender
+                            .send(ExecutorMessage::Abort { id: task_id, resp })
+                            .await;
                     }
                     ReactorMessage::ServerDeleteTask { task_id, resp } => {
-                        db_sender.send(DBMessage::DeleteTask {
-                            id: task_id,
-                            resp,
-                        }).await;
+                        db_sender
+                            .send(DBMessage::DeleteTask { id: task_id, resp })
+                            .await;
                     }
                     ReactorMessage::UpdateTaskExecution { task_id } => {
                         // Update task
                         let (db_tx, db_rx) = oneshot::channel();
-                        let _res = db_sender.send(DBMessage::GetTask {
-                            id: task_id,
-                            resp: db_tx,
-                        }).await;
+                        let _res = db_sender
+                            .send(DBMessage::GetTask {
+                                id: task_id,
+                                resp: db_tx,
+                            })
+                            .await;
                         // Unwrapping it because we're sure it exists on db possible TODO ?
                         let mut task_model = db_rx.await.unwrap().unwrap();
                         task_model.exec_count += 1;
                         task_model.last_execution = Some(now!());
                         task_model.next_execution = task_model.calc_next_execution();
                         let (db_tx, _) = tokio::sync::oneshot::channel();
-                        db_sender.send(DBMessage::UpdateTask {
-                            task: task_model,
-                            resp: db_tx,
-                        }).await;
+                        db_sender
+                            .send(DBMessage::UpdateTask {
+                                task: task_model,
+                                resp: db_tx,
+                            })
+                            .await;
                     }
-                    ReactorMessage::ServerCreateTask { task_name, frequency, task_type, task_props, resp } => {
+                    ReactorMessage::ServerCreateTask {
+                        task_name,
+                        frequency,
+                        task_type,
+                        task_props,
+                        resp,
+                    } => {
                         let new_id = uuid::Uuid::new_v4();
-                        let serde_string = match TaskModel::get_serde_from_props(new_id, task_type.clone(), task_props.clone()) {
+                        let serde_string = match TaskModel::get_serde_from_props(
+                            new_id,
+                            task_type.clone(),
+                            task_props.clone(),
+                        ) {
                             Ok(s) => s,
                             Err(e) => {
                                 resp.send(Err(e));
                                 return;
                             }
                         };
-                        let task = TaskModel::new(Some(new_id), task_name, task_type, serde_string, frequency);
+                        let task = TaskModel::new(
+                            Some(new_id),
+                            task_name,
+                            task_type,
+                            serde_string,
+                            frequency,
+                        );
                         let (tx, rx) = tokio::sync::oneshot::channel();
-                        db_sender.send(
-                            DBMessage::CreateTask {
-                                task,
-                                resp: tx,
-                            }
-                        ).await;
+                        db_sender
+                            .send(DBMessage::CreateTask { task, resp: tx })
+                            .await;
                         let result = rx.await.unwrap();
                         resp.send(result);
                     }
                     ReactorMessage::ServerGetActiveTasks { resp } => {
                         let (e_tx, e_rx) = oneshot::channel();
-                        executor_sender.send(
-                            ExecutorMessage::GetActiveTaskIDs {
-                                resp: e_tx
-                            }
-                        ).await;
+                        executor_sender
+                            .send(ExecutorMessage::GetActiveTaskIDs { resp: e_tx })
+                            .await;
                         let active_task_ids = e_rx.await.unwrap();
                         let mut active_tasks = vec![];
                         // TODO: Find a better way in future
                         for task_id in active_task_ids {
                             let (db_tx, db_rx) = oneshot::channel();
-                            db_sender.clone().send(DBMessage::GetTask {
-                                id: task_id,
-                                resp: db_tx,
-                            }).await;
+                            db_sender
+                                .clone()
+                                .send(DBMessage::GetTask {
+                                    id: task_id,
+                                    resp: db_tx,
+                                })
+                                .await;
                             let task = db_rx.await.unwrap();
                             match task {
                                 Ok(task) => {
@@ -389,20 +410,31 @@ impl Reactor {
                     }
                     ReactorMessage::ServerGetTask { task_id, resp } => {
                         let (tx, rx) = oneshot::channel();
-                        db_sender.send(DBMessage::GetTask {
-                            id: task_id,
-                            resp: tx,
-                        }).await;
+                        db_sender
+                            .send(DBMessage::GetTask {
+                                id: task_id,
+                                resp: tx,
+                            })
+                            .await;
 
                         let res = rx.await.unwrap();
                         resp.send(res);
                     }
-                    ReactorMessage::ServerUpdateTask { task_id, task_name, frequency, task_props, resp } => {
+                    ReactorMessage::ServerUpdateTask {
+                        task_id,
+                        task_name,
+                        frequency,
+                        task_props,
+                        resp,
+                    } => {
                         let (task_tx, task_rx) = oneshot::channel();
-                        inner_sender.clone().send(ReactorMessage::ServerGetTask {
-                            task_id,
-                            resp: task_tx,
-                        }).await;
+                        inner_sender
+                            .clone()
+                            .send(ReactorMessage::ServerGetTask {
+                                task_id,
+                                resp: task_tx,
+                            })
+                            .await;
                         let task = task_rx.await.unwrap();
                         let mut task = match task {
                             Ok(t) => t,
@@ -413,7 +445,11 @@ impl Reactor {
                         };
                         task.task_name = task_name;
                         task.frequency = frequency;
-                        let serde_string = match TaskModel::get_serde_from_props(task_id, task.task_type.clone(), task_props) {
+                        let serde_string = match TaskModel::get_serde_from_props(
+                            task_id,
+                            task.task_type.clone(),
+                            task_props,
+                        ) {
                             Ok(s) => s,
                             Err(e) => {
                                 resp.send(Err(e));
@@ -422,46 +458,139 @@ impl Reactor {
                         };
                         task.serde_string = serde_string;
                         let (db_tx, db_rx) = oneshot::channel();
-                        db_sender.send(DBMessage::UpdateTask {
-                            task,
-                            resp: db_tx,
-                        }).await;
+                        db_sender
+                            .send(DBMessage::UpdateTask { task, resp: db_tx })
+                            .await;
                         let result = db_rx.await.unwrap();
                         resp.send(result);
                     }
-                    ReactorMessage::ServerGetExecutionReportsForTask { task_id, offset, resp } => {
+                    ReactorMessage::ServerGetExecutionReportsForTask {
+                        task_id,
+                        offset,
+                        resp,
+                    } => {
                         let (db_tx, db_rx) = oneshot::channel();
-                        db_sender.send(DBMessage::GetExecutionReportsForTask{
-                            task_id,
-                            offset,
-                            resp: db_tx,
-                        }).await;
+                        db_sender
+                            .send(DBMessage::GetExecutionReportsForTask {
+                                task_id,
+                                offset,
+                                resp: db_tx,
+                            })
+                            .await;
                         let result = db_rx.await.unwrap();
                         resp.send(result);
                     }
                     ReactorMessage::ServerGetExecutionReports { offset, resp } => {
                         let (db_tx, db_rx) = oneshot::channel();
-                        db_sender.send(DBMessage::GetExecutionReports{
-                            offset,
-                            resp: db_tx,
-                        }).await;
+                        db_sender
+                            .send(DBMessage::GetExecutionReports {
+                                offset,
+                                resp: db_tx,
+                            })
+                            .await;
                         let result = db_rx.await.unwrap();
                         resp.send(result);
                     }
                     ReactorMessage::ServerGetExecutionReport { report_id, resp } => {
-                        db_sender.send(DBMessage::GetExecutionReport {
-                            report_id,
-                            resp,
-                        }).await;
+                        db_sender
+                            .send(DBMessage::GetExecutionReport { report_id, resp })
+                            .await;
                     }
                     ReactorMessage::CreateError { error, resp } => {
-                        db_sender.send(DBMessage::CreateError {
-                            error,
-                            resp
-                        }).await;
+                        db_sender.send(DBMessage::CreateError { error, resp }).await;
                     }
                 }
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{tasks::CmdTask, types::BoxedTask};
+    use tokio::sync::*;
+    use tokio_stream::StreamExt;
+    use uuid::Uuid;
+
+    async fn create_long_task() -> CmdTask {
+        let sleep_and_print_and_create_file_command = r#"
+            sleep 0.2s
+            echo "Hey hey hey"
+        "#;
+        let _file =
+            tokio::fs::write("temp_script.sh", sleep_and_print_and_create_file_command).await;
+        let task = CmdTask::new(Uuid::new_v4(), Box::new("/bin/bash temp_script.sh".into()));
+        return task;
+    }
+
+    async fn create_boxed_long_task() -> BoxedTask {
+        let task = create_long_task().await;
+        return Box::new(task);
+    }
+
+    #[tokio::test]
+    async fn execution_flow() {
+        let (db_tx, mut db_rx) = mpsc::channel(32);
+        let (ex_tx, ex_rx) = mpsc::channel(32);
+        let (sv_tx, sv_rx) = mpsc::channel(32);
+        let (tw_tx, tw_rx) = mpsc::channel(32);
+        let (oe_tx, oe_rx) = broadcast::channel(32);
+        let server_receiver = std::sync::Arc::new(Mutex::new(sv_rx));
+        let (r_tx, r_rx) = mpsc::channel(32);
+        let mut reactor = Reactor {
+            db_sender: db_tx,
+            executor_sender: ex_tx,
+            task_watcher_sender: tw_tx,
+            output_emitter: oe_tx,
+            server_receiver: server_receiver,
+            inner_sender: r_tx,
+        };
+        tokio::spawn(async move {
+            let mut fake_db = vec![create_long_task().await];
+            match db_rx.recv().await.unwrap() {
+                DBMessage::GetTask { resp, .. } => {
+                    let task = fake_db.pop().unwrap();
+                    fake_db.push(create_long_task().await);
+                    resp.send(Ok(TaskModel::from_boxed_task(
+                        Box::new(task),
+                        "aaa".into(),
+                        "Hook".into(),
+                    )))
+                    .unwrap();
+                }
+                DBMessage::GetScheduledTasks { resp, .. } => {
+                    let task = fake_db.pop().unwrap();
+                    fake_db.push(create_long_task().await);
+                    resp.send(Ok(vec![TaskModel::from_boxed_task(
+                        Box::new(task),
+                        "aaa".into(),
+                        "Hook".into(),
+                    )]))
+                    .unwrap();
+                }
+                DBMessage::UpdateNextExecution { resp, .. } => {
+                    let task = fake_db.pop().unwrap();
+                    fake_db.push(create_long_task().await);
+                    resp.send(Ok(TaskModel::from_boxed_task(
+                        Box::new(task),
+                        "aaa".into(),
+                        "Hook".into(),
+                    )))
+                    .unwrap();
+                }
+                DBMessage::UpdateTask { task, resp } => {
+                    resp.send(Ok(task)).unwrap();
+                }
+                _ => panic!("Shouldn't happen! But when it does, please update the test :)"),
+            };
+        });
+        tokio::time::timeout(
+            tokio::time::Duration::from_secs_f32(1.2),
+            tokio::spawn(async move {
+                reactor.listen(r_rx).await;
+            }),
+        )
+        .await;
     }
 }

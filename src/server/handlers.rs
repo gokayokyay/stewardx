@@ -1,14 +1,14 @@
 use std::str::FromStr;
 
 use super::ServerMessage;
+use super::ServerUtils;
 use hyper::{body::HttpBody, Body, Request, Response};
-use routerify::{Router, ext::RequestExt};
+use routerify::{ext::RequestExt, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;
-use uuid::Uuid;
-use super::ServerUtils;
 use tracing::error;
+use uuid::Uuid;
 
 #[macro_export]
 macro_rules! response_json {
@@ -134,14 +134,14 @@ pub async fn exec_task_url(req: Request<Body>) -> Result<Response<Body>, anyhow:
             });
             let obj = obj.to_string();
             println!("obj {:?}", obj);
-            
+
             return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
         }
     };
-    match sender.send(ServerMessage::ExecuteTask {
-        task_id,
-        resp: tx,
-    }).await {
+    match sender
+        .send(ServerMessage::ExecuteTask { task_id, resp: tx })
+        .await
+    {
         Ok(_) => {}
         Err(e) => {
             error!("{}", e.to_string());
@@ -250,7 +250,7 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
         task_name: String,
         frequency: String,
         task_type: String,
-        task_props: Value
+        task_props: Value,
     }
     let (tx, rx) = tokio::sync::oneshot::channel();
     let body = req.body_mut();
@@ -260,7 +260,13 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
         {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             sender
-                .send(ServerMessage::CreateTask { task_name: json_value.task_name, frequency: json_value.frequency, task_type: json_value.task_type, task_props: json_value.task_props, resp: tx })
+                .send(ServerMessage::CreateTask {
+                    task_name: json_value.task_name,
+                    frequency: json_value.frequency,
+                    task_type: json_value.task_type,
+                    task_props: json_value.task_props,
+                    resp: tx,
+                })
                 .await;
             let res = match rx.await {
                 Ok(res) => res,
@@ -269,7 +275,10 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                         "error": e.to_string()
                     });
                     let obj = obj.to_string();
-                    return response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj);
+                    return response_json!(
+                        status: hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        body: &obj
+                    );
                 }
             };
             match res {
@@ -283,7 +292,7 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                         "error": e.to_string()
                     });
                     let obj = obj.to_string();
-                    
+
                     return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
                 }
             }
@@ -298,9 +307,7 @@ pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyh
     let (tx, rx) = tokio::sync::oneshot::channel();
     let sender = req.data::<Sender<ServerMessage>>().unwrap();
     sender
-        .send(ServerMessage::GetActiveTasks {
-            resp: tx,
-        })
+        .send(ServerMessage::GetActiveTasks { resp: tx })
         .await;
 
     let result = rx.await.unwrap();
@@ -312,7 +319,7 @@ pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyh
             });
             println!("{}", e.to_string());
             let obj = obj.to_string();
-            
+
             response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj)
         }
     }
@@ -324,7 +331,7 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
         task_name: String,
         frequency: String,
         task_type: String,
-        task_props: Value
+        task_props: Value,
     }
     let (tx, rx) = tokio::sync::oneshot::channel();
     let task_id = match req.param("id") {
@@ -334,7 +341,7 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                 "error": "Missing url parameter."
             });
             let obj = obj.to_string();
-            
+
             return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
         }
     };
@@ -345,7 +352,13 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
         {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             sender
-                .send(ServerMessage::UpdateTask { task_id: task_id, task_name: json_value.task_name, frequency: json_value.frequency, task_props: json_value.task_props, resp: tx })
+                .send(ServerMessage::UpdateTask {
+                    task_id: task_id,
+                    task_name: json_value.task_name,
+                    frequency: json_value.frequency,
+                    task_props: json_value.task_props,
+                    resp: tx,
+                })
                 .await;
             let res = match rx.await {
                 Ok(res) => res,
@@ -354,8 +367,11 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                         "error": e.to_string()
                     });
                     let obj = obj.to_string();
-                    
-                    return response_json!(status: hyper::StatusCode::INTERNAL_SERVER_ERROR, body: &obj);
+
+                    return response_json!(
+                        status: hyper::StatusCode::INTERNAL_SERVER_ERROR,
+                        body: &obj
+                    );
                 }
             };
             match res {
@@ -369,7 +385,7 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                         "error": e.to_string()
                     });
                     let obj = obj.to_string();
-                    
+
                     return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
                 }
             }
@@ -396,7 +412,7 @@ pub async fn get_reports_for_task(req: Request<Body>) -> Result<Response<Body>, 
             });
             let obj = obj.to_string();
             println!("obj {:?}", obj);
-            
+
             return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
         }
     };
@@ -412,11 +428,13 @@ pub async fn get_reports_for_task(req: Request<Body>) -> Result<Response<Body>, 
         }
     };
     let offset = query_map.get("offset").and_then(|x| x.parse::<i64>().ok());
-    sender.send(ServerMessage::GetExecutionReportsForTask {
-        task_id,
-        offset,
-        resp: tx,
-    }).await;
+    sender
+        .send(ServerMessage::GetExecutionReportsForTask {
+            task_id,
+            offset,
+            resp: tx,
+        })
+        .await;
     let result = rx.await.unwrap();
     match result {
         Ok(reports) => {
@@ -441,14 +459,16 @@ pub async fn get_report(req: Request<Body>) -> Result<Response<Body>, anyhow::Er
             });
             let obj = obj.to_string();
             println!("obj {:?}", obj);
-            
+
             return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
         }
     };
-    sender.send(ServerMessage::GetExecutionReport {
-        resp: tx,
-        report_id,
-    }).await;
+    sender
+        .send(ServerMessage::GetExecutionReport {
+            resp: tx,
+            report_id,
+        })
+        .await;
     let result = rx.await.unwrap();
     match result {
         Ok(reports) => {
@@ -477,10 +497,9 @@ pub async fn get_reports(req: Request<Body>) -> Result<Response<Body>, anyhow::E
         }
     };
     let offset = query_map.get("offset").and_then(|x| x.parse::<i64>().ok());
-    sender.send(ServerMessage::GetExecutionReports {
-        offset,
-        resp: tx,
-    }).await;
+    sender
+        .send(ServerMessage::GetExecutionReports { offset, resp: tx })
+        .await;
     let result = rx.await.unwrap();
     match result {
         Ok(reports) => {

@@ -1,7 +1,11 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::{models::{ExecutionReport, OutputModel, TaskError, TaskModel}, traits::BoxedStream, types::{BoxedTask, OneShotMessageResponse}};
+use crate::{
+    models::{ExecutionReport, OutputModel, TaskError, TaskModel},
+    traits::BoxedStream,
+    types::{BoxedTask, OneShotMessageResponse},
+};
 
 pub enum ReactorMessage {
     GetScheduledTasks {
@@ -9,7 +13,7 @@ pub enum ReactorMessage {
         resp: ComposedResponse<Vec<TaskModel>>,
     },
     ExecuteScheduledTasks {
-        when: NaiveDateTime
+        when: NaiveDateTime,
     },
     ExecuteTask {
         task: BoxedTask,
@@ -30,7 +34,7 @@ pub enum ReactorMessage {
     },
     ExecutionFinished {
         id: Uuid,
-        should_update: bool
+        should_update: bool,
     },
     CreateError {
         error: TaskError,
@@ -38,57 +42,57 @@ pub enum ReactorMessage {
     },
     ServerGetTasks {
         offset: Option<i64>,
-        resp: ComposedResponse<Vec<TaskModel>>
+        resp: ComposedResponse<Vec<TaskModel>>,
     },
     ServerGetTask {
         task_id: Uuid,
-        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
     },
     ServerCreateTask {
         task_name: String,
         frequency: String,
         task_type: String,
         task_props: serde_json::Value,
-        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
     },
     ServerExecuteTask {
         task_id: Uuid,
-        resp: OneShotMessageResponse<bool>
+        resp: OneShotMessageResponse<bool>,
     },
     ServerAbortTask {
         task_id: Uuid,
-        resp: OneShotMessageResponse<bool>
+        resp: OneShotMessageResponse<bool>,
     },
     ServerDeleteTask {
         task_id: Uuid,
-        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
     },
     ServerGetActiveTasks {
-        resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>
+        resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>,
     },
     ServerUpdateTask {
         task_id: Uuid,
         task_name: String,
         frequency: String,
         task_props: serde_json::Value,
-        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
     },
     ServerGetExecutionReportsForTask {
         task_id: Uuid,
         offset: Option<i64>,
-        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>
+        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>,
     },
     ServerGetExecutionReports {
         offset: Option<i64>,
-        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>
+        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>,
     },
     ServerGetExecutionReport {
         report_id: Uuid,
-        resp: OneShotMessageResponse<anyhow::Result<ExecutionReport>>
+        resp: OneShotMessageResponse<anyhow::Result<ExecutionReport>>,
     },
     UpdateTaskExecution {
-        task_id: Uuid
-    }
+        task_id: Uuid,
+    },
 }
 
 // type AnyResult<T> = Result<T, anyhow::Error>;
@@ -104,7 +108,7 @@ impl ReactorMessage {
             ReactorMessage::WatchExecution { .. } => "WatchExecution",
             ReactorMessage::OutputReceived { .. } => "OutputReceived",
             ReactorMessage::ExecutionFinished { .. } => "ExecutionFinished",
-            ReactorMessage::ServerGetTasks {.. } => "ServerGetTasks",
+            ReactorMessage::ServerGetTasks { .. } => "ServerGetTasks",
             ReactorMessage::ServerCreateTask { .. } => "ServerCreateTask",
             ReactorMessage::ServerExecuteTask { .. } => "ServerExecuteTask",
             ReactorMessage::ServerAbortTask { .. } => "ServerAbortTask",
@@ -113,10 +117,12 @@ impl ReactorMessage {
             ReactorMessage::UpdateTaskExecution { .. } => "UpdateTaskExecution",
             ReactorMessage::ServerGetTask { .. } => "ServerGetTask",
             ReactorMessage::ServerUpdateTask { .. } => "ServerUpdateTask",
-            ReactorMessage::ServerGetExecutionReportsForTask { .. } => "ServerGetExecutionReportsForTask",
+            ReactorMessage::ServerGetExecutionReportsForTask { .. } => {
+                "ServerGetExecutionReportsForTask"
+            }
             ReactorMessage::ServerGetExecutionReports { .. } => "ServerGetExecutionReports",
             ReactorMessage::ServerGetExecutionReport { .. } => "ServerGetExecutionReport",
-            ReactorMessage::CreateError { .. } => "CreateError"
-        }
+            ReactorMessage::CreateError { .. } => "CreateError",
+        };
     }
 }

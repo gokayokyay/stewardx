@@ -1,4 +1,4 @@
-use chrono::{NaiveDateTime};
+use chrono::NaiveDateTime;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -43,27 +43,33 @@ impl TaskModel {
         };
         return next_execution;
     }
-    // pub fn from_boxed_task(task: BoxedTask, name: String, frequency: String) -> Self {
-    //     let serde_string = task.to_string();
-    //     let mut task = Self {
-    //         id: task.get_id(),
-    //         task_name: name,
-    //         created_at: now!(),
-    //         updated_at: now!(),
-    //         task_type: task.get_type(),
-    //         serde_string,
-    //         frequency,
-    //         last_execution: None,
-    //         next_execution: None,
-    //         exec_count: 0,
-    //     };
-    //     task.next_execution = task.calc_next_execution();
-    //     return task;
-    // }
-    pub fn new(id: Option<Uuid>, task_name: String, task_type: String, serde_string: String, frequency: String) -> Self {
+    pub fn from_boxed_task(task: crate::types::BoxedTask, name: String, frequency: String) -> Self {
+        let serde_string = task.to_string();
+        let mut task = Self {
+            id: task.get_id(),
+            task_name: name,
+            created_at: now!(),
+            updated_at: now!(),
+            task_type: task.get_type(),
+            serde_string,
+            frequency,
+            last_execution: None,
+            next_execution: None,
+            exec_count: 0,
+        };
+        task.next_execution = task.calc_next_execution();
+        return task;
+    }
+    pub fn new(
+        id: Option<Uuid>,
+        task_name: String,
+        task_type: String,
+        serde_string: String,
+        frequency: String,
+    ) -> Self {
         let id = match id {
             Some(id) => id,
-            None => Uuid::new_v4()
+            None => Uuid::new_v4(),
         };
         let mut task = Self {
             id,
@@ -80,7 +86,11 @@ impl TaskModel {
         task.next_execution = task.calc_next_execution();
         return task;
     }
-    pub fn get_serde_from_props(id: Uuid, task_type: String, task_props: serde_json::Value) -> Result<String, anyhow::Error> {
+    pub fn get_serde_from_props(
+        id: Uuid,
+        task_type: String,
+        task_props: serde_json::Value,
+    ) -> Result<String, anyhow::Error> {
         use crate::traits::GetSerdeFromProps;
         match task_type.as_str() {
             "CmdTask" => {
@@ -89,7 +99,7 @@ impl TaskModel {
             "DockerTask" => {
                 return crate::tasks::DockerTask::get_serde_from_props(id, task_props);
             }
-            _ => return Err(anyhow::anyhow!("Unknown task type {}", task_type))
+            _ => return Err(anyhow::anyhow!("Unknown task type {}", task_type)),
         };
     }
 }

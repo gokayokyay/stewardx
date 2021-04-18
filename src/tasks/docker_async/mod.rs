@@ -1,4 +1,4 @@
-mod task;
 mod image_type;
-pub use task::DockerTask;
+mod task;
 pub use image_type::DockerImageType;
+pub use task::DockerTask;

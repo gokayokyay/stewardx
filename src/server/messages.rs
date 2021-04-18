@@ -2,7 +2,11 @@ use std::any;
 
 use uuid::Uuid;
 
-use crate::{models::{ExecutionReport, TaskModel}, traits::BoxedStream, types::OneShotMessageResponse};
+use crate::{
+    models::{ExecutionReport, TaskModel},
+    traits::BoxedStream,
+    types::OneShotMessageResponse,
+};
 
 // #[derive(Debug)]
 pub enum ServerMessage {
@@ -12,7 +16,7 @@ pub enum ServerMessage {
     },
     GetTask {
         task_id: Uuid,
-        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
     },
     ExecuteTask {
         task_id: Uuid,
@@ -31,31 +35,31 @@ pub enum ServerMessage {
         frequency: String,
         task_type: String,
         task_props: serde_json::Value,
-        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
     },
     GetActiveTasks {
-        resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>
+        resp: OneShotMessageResponse<anyhow::Result<Vec<TaskModel>>>,
     },
     UpdateTask {
         task_id: Uuid,
         task_name: String,
         frequency: String,
         task_props: serde_json::Value,
-        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>
+        resp: OneShotMessageResponse<anyhow::Result<TaskModel>>,
     },
     GetExecutionReportsForTask {
         task_id: Uuid,
         offset: Option<i64>,
-        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>
+        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>,
     },
     GetExecutionReports {
         offset: Option<i64>,
-        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>
+        resp: OneShotMessageResponse<anyhow::Result<Vec<ExecutionReport>>>,
     },
     GetExecutionReport {
         report_id: Uuid,
-        resp: OneShotMessageResponse<anyhow::Result<ExecutionReport>>
-    }
+        resp: OneShotMessageResponse<anyhow::Result<ExecutionReport>>,
+    },
 }
 
 impl ServerMessage {

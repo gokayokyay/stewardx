@@ -198,8 +198,8 @@ impl DBManager {
             "DELETE FROM steward_tasks WHERE id = $1 RETURNING *;",
             id
         )
-            .fetch_one(conn)
-            .await;
+        .fetch_one(conn)
+        .await;
         row
     }
     #[instrument(
@@ -273,7 +273,7 @@ impl DBManager {
     #[instrument(name = "Get execution report.", skip(conn))]
     pub async fn get_execution_report(
         conn: &mut Connection,
-        id: Uuid
+        id: Uuid,
     ) -> Result<ExecutionReport, sqlx::Error> {
         let row = sqlx::query!(
             r#"
@@ -391,32 +391,20 @@ impl DBManager {
                 match message {
                     DBMessage::GetTask { id, resp } => {
                         let task = sqlx_to_anyhow!(Self::get_task(&mut connection, id).await);
-                        recv_dropped!(
-                            resp.send(task),
-                            "GetTask"
-                        );
+                        recv_dropped!(resp.send(task), "GetTask");
                     }
                     DBMessage::GetTasks { offset, resp } => {
                         let tasks = sqlx_to_anyhow!(Self::get_tasks(&mut connection, offset).await);
-                        recv_dropped!(
-                            resp.send(tasks),
-                            "GetTasks"
-                        );
+                        recv_dropped!(resp.send(tasks), "GetTasks");
                     }
                     DBMessage::CreateTask { task, resp } => {
                         let task = sqlx_to_anyhow!(Self::create_task(&mut connection, task).await);
-                        recv_dropped!(
-                            resp.send(task),
-                            "CreateTask"
-                        );
+                        recv_dropped!(resp.send(task), "CreateTask");
                     }
                     DBMessage::GetScheduledTasks { when, resp } => {
                         let tasks =
                             sqlx_to_anyhow!(Self::get_scheduled_tasks(&mut connection, when).await);
-                        recv_dropped!(
-                            resp.send(tasks),
-                            "GetScheduledTasks"
-                        );
+                        recv_dropped!(resp.send(tasks), "GetScheduledTasks");
                     }
                     DBMessage::UpdateNextExecution {
                         id,
@@ -426,47 +414,33 @@ impl DBManager {
                         let task = sqlx_to_anyhow!(
                             Self::update_next_execution(&mut connection, id, next_execution).await
                         );
-                        recv_dropped!(
-                            resp.send(task),
-                            "UpdateNextExecution"
-                        );
+                        recv_dropped!(resp.send(task), "UpdateNextExecution");
                     }
                     DBMessage::CreateError { error, resp } => {
                         let error =
                             sqlx_to_anyhow!(Self::create_error(&mut connection, error).await);
-                        recv_dropped!(
-                            resp.send(error),
-                            "CreateError"
-                        );
+                        recv_dropped!(resp.send(error), "CreateError");
                     }
                     DBMessage::UpdateTask { task, resp } => {
                         let task = sqlx_to_anyhow!(Self::update_task(&mut connection, task).await);
-                        recv_dropped!(
-                            resp.send(task),
-                            "UpdateTask"
-                        );
+                        recv_dropped!(resp.send(task), "UpdateTask");
                     }
                     DBMessage::DeleteTask { id, resp } => {
                         let mut error_connection = pool.acquire().await.unwrap();
                         let mut report_connection = pool.acquire().await.unwrap();
                         let errors = Self::delete_errors_for_task(&mut error_connection, id);
-                        let reports = Self::delete_execution_reports_for_task(&mut report_connection, id);
+                        let reports =
+                            Self::delete_execution_reports_for_task(&mut report_connection, id);
                         let (_found_errors, _found_reports) = tokio::join!(errors, reports);
                         info!("Cleaned errors and reports of task {}", id);
                         let task = sqlx_to_anyhow!(Self::delete_task(&mut connection, id).await);
-                        recv_dropped!(
-                            resp.send(task),
-                            "DeleteTask"
-                        );
+                        recv_dropped!(resp.send(task), "DeleteTask");
                     }
                     DBMessage::CreateExecutionReport { report, resp } => {
                         let report = sqlx_to_anyhow!(
                             Self::create_execution_report(&mut connection, report).await
                         );
-                        recv_dropped!(
-                            resp.send(report),
-                            "CreateExecutionReport"
-                        );
+                        recv_dropped!(resp.send(report), "CreateExecutionReport");
                     }
                     DBMessage::GetExecutionReportsForTask {
                         task_id,
@@ -474,24 +448,16 @@ impl DBManager {
                         resp,
                     } => {
                         let reports = sqlx_to_anyhow!(
-                            Self::get_execution_reports_for_task(&mut connection, task_id, offset).await
+                            Self::get_execution_reports_for_task(&mut connection, task_id, offset)
+                                .await
                         );
-                        recv_dropped!(
-                            resp.send(reports),
-                            "GetExecutionReportsForTask"
-                        );
+                        recv_dropped!(resp.send(reports), "GetExecutionReportsForTask");
                     }
-                    DBMessage::GetExecutionReports {
-                        offset,
-                        resp,
-                    } => {
+                    DBMessage::GetExecutionReports { offset, resp } => {
                         let reports = sqlx_to_anyhow!(
                             Self::get_execution_reports(&mut connection, offset).await
                         );
-                        recv_dropped!(
-                            resp.send(reports),
-                            "GetExecutionReports"
-                        );
+                        recv_dropped!(resp.send(reports), "GetExecutionReports");
                     }
                     DBMessage::DeleteExecutionReport { .. } => {
                         todo!()
@@ -500,28 +466,19 @@ impl DBManager {
                         let reports = sqlx_to_anyhow!(
                             Self::delete_execution_reports_for_task(&mut connection, task_id).await
                         );
-                        recv_dropped!(
-                            resp.send(reports),
-                            "DeleteExecutionReportsForTask"
-                        );
+                        recv_dropped!(resp.send(reports), "DeleteExecutionReportsForTask");
                     }
                     DBMessage::DeleteErrorsForTask { task_id, resp } => {
                         let errors = sqlx_to_anyhow!(
                             Self::delete_errors_for_task(&mut connection, task_id).await
                         );
-                        recv_dropped!(
-                            resp.send(errors),
-                            "DeleteErrorsForTask"
-                        );
+                        recv_dropped!(resp.send(errors), "DeleteErrorsForTask");
                     }
                     DBMessage::GetExecutionReport { report_id, resp } => {
                         let report = sqlx_to_anyhow!(
                             Self::get_execution_report(&mut connection, report_id).await
                         );
-                        recv_dropped!(
-                            resp.send(report),
-                            "GetExecutionReport"
-                        );
+                        recv_dropped!(resp.send(report), "GetExecutionReport");
                     }
                 };
             });

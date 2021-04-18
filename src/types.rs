@@ -1,5 +1,8 @@
-use crate::{db::DBMessage, executor::ExecutorMessage, models::OutputModel, reactor::ReactorMessage, server::ServerMessage, tasks::TaskWatcherMessage, traits::Executable};
-use futures::{Stream, channel::mpsc::Receiver};
+use crate::{
+    db::DBMessage, executor::ExecutorMessage, models::OutputModel, reactor::ReactorMessage,
+    server::ServerMessage, tasks::TaskWatcherMessage, traits::Executable,
+};
+use futures::{channel::mpsc::Receiver, Stream};
 
 pub type BoxedStream = Box<dyn Stream<Item = String> + Unpin + Send>;
 pub type ExecutableTask = dyn Executable + Send + Sync;
@@ -27,8 +30,8 @@ macro_rules! recv_dropped {
     ($m:expr, $f: tt) => {
         use tracing::error;
         match $m {
-            Ok(_) => {},
-            Err(_) => error!("Receiver was dropped for: {}", $f)
+            Ok(_) => {}
+            Err(_) => error!("Receiver was dropped for: {}", $f),
         }
-    }
+    };
 }

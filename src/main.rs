@@ -1,16 +1,16 @@
 use db::DBManager;
 use executor::Executor;
 use models::{OutputModel, TaskModel};
+use once_cell::sync::Lazy;
 use reactor::Reactor;
 use server::Server;
 use shiplift::Docker;
 use std::{str::FromStr, sync::Arc};
-use tasks::{CmdTask, DockerTask, TaskWatcher, DockerImageType};
+use tasks::{CmdTask, DockerImageType, DockerTask, TaskWatcher};
 use tokio::task::spawn_blocking;
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
-use once_cell::sync::Lazy;
 
 mod db;
 mod executor;
@@ -21,9 +21,7 @@ mod tasks;
 mod traits;
 mod types;
 
-static GLOBAL_DOCKER: Lazy<shiplift::Docker> = Lazy::new(|| {
-    shiplift::Docker::default()
-});
+static GLOBAL_DOCKER: Lazy<shiplift::Docker> = Lazy::new(|| shiplift::Docker::default());
 
 #[tokio::main]
 async fn main() {

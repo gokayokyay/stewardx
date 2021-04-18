@@ -11,7 +11,10 @@ use tokio::{
 use tokio_stream::wrappers::LinesStream;
 use uuid::Uuid;
 
-use crate::{models::TaskError, traits::{BoxedStream, Executable, FromJson, GetSerdeFromProps}};
+use crate::{
+    models::TaskError,
+    traits::{BoxedStream, Executable, FromJson, GetSerdeFromProps},
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CmdTask {
@@ -146,18 +149,18 @@ impl GetSerdeFromProps for CmdTask {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::tasks::CmdTask;
     use super::*;
+    use crate::tasks::CmdTask;
 
     async fn create_long_task() -> CmdTask {
         let sleep_and_print_and_create_file_command = r#"
             sleep 0.2s
             echo "Hey hey hey"
         "#;
-        let _file = tokio::fs::write("temp_script.sh", sleep_and_print_and_create_file_command).await;
+        let _file =
+            tokio::fs::write("temp_script.sh", sleep_and_print_and_create_file_command).await;
         let task = CmdTask::new(Uuid::new_v4(), Box::new("/bin/bash temp_script.sh".into()));
         task
     }
@@ -166,14 +169,18 @@ mod tests {
             Ok(_) => {}
             Err(e) => {
                 eprintln!("{}", e.to_string());
-                println!("Couldn't cleanup after test, please locate and remove \"testing_cmd.temp\"");
+                println!(
+                    "Couldn't cleanup after test, please locate and remove \"testing_cmd.temp\""
+                );
             }
         };
         match tokio::fs::remove_file("temp_script.sh").await {
             Ok(_) => {}
             Err(e) => {
                 eprintln!("{}", e.to_string());
-                println!("Couldn't cleanup after test, please locate and remove \"temp_script.sh\"");
+                println!(
+                    "Couldn't cleanup after test, please locate and remove \"temp_script.sh\""
+                );
             }
         };
     }

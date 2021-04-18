@@ -69,7 +69,7 @@ pub enum DBMessage {
     GetExecutionReport {
         report_id: Uuid,
         resp: DBMessageResponse<ExecutionReport>,
-    }
+    },
 }
 
 impl DBMessage {

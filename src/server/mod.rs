@@ -7,10 +7,13 @@ use routerify::{Router, RouterService};
 mod handlers;
 mod messages;
 mod utils;
-use utils as ServerUtils;
-use handlers::{abort_task, create_task, delete_task, exec_task, exec_task_url, get_active_tasks, get_report, get_reports, get_reports_for_task, get_task, get_tasks, update_task};
+use handlers::{
+    abort_task, create_task, delete_task, exec_task, exec_task_url, get_active_tasks, get_report,
+    get_reports, get_reports_for_task, get_task, get_tasks, update_task,
+};
 pub use messages::ServerMessage;
 use tracing::info;
+use utils as ServerUtils;
 
 mod app_router;
 use app_router::app_router;

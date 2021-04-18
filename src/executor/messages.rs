@@ -20,8 +20,8 @@ pub enum ExecutorMessage {
         resp: OneShotMessageResponse<bool>,
     },
     GetActiveTaskIDs {
-        resp: OneShotMessageResponse<Vec<Uuid>>
-    }
+        resp: OneShotMessageResponse<Vec<Uuid>>,
+    },
 }
 
 impl ExecutorMessage {

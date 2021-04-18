@@ -5,7 +5,7 @@ mod frequency;
 mod messages;
 mod watcher;
 pub use cmd_async::CmdTask;
-pub use docker_async::{DockerTask, DockerImageType};
+pub use docker_async::{DockerImageType, DockerTask};
 // pub use errors::TaskError;
 pub use frequency::Frequency;
 pub use messages::TaskWatcherMessage;
@@ -23,7 +23,7 @@ macro_rules! ModelToTask {
                 CmdTask::from_json($r.serde_string.clone()).unwrap(),
             )),
             "DockerTask" => Some(Box::new(
-                DockerTask::from_json($r.serde_string.clone()).unwrap()
+                DockerTask::from_json($r.serde_string.clone()).unwrap(),
             )),
             // "HttpTask" => Some(Box::new(HttpTask::from_json($r.serde_string).unwrap())),
             _ => None,
