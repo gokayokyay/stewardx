@@ -32,6 +32,10 @@ pub enum ReactorMessage {
         id: Uuid,
         should_update: bool
     },
+    CreateError {
+        error: TaskError,
+        resp: ComposedResponse<TaskError>,
+    },
     ServerGetTasks {
         offset: Option<i64>,
         resp: ComposedResponse<Vec<TaskModel>>
@@ -112,6 +116,7 @@ impl ReactorMessage {
             ReactorMessage::ServerGetExecutionReportsForTask { .. } => "ServerGetExecutionReportsForTask",
             ReactorMessage::ServerGetExecutionReports { .. } => "ServerGetExecutionReports",
             ReactorMessage::ServerGetExecutionReport { .. } => "ServerGetExecutionReport",
+            ReactorMessage::CreateError { .. } => "CreateError"
         }
     }
 }

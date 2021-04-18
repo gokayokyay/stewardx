@@ -3,7 +3,7 @@ mod messages;
 use std::sync::Arc;
 use tokio::sync::{Mutex, oneshot, broadcast};
 
-use crate::{ModelToTask, db::DBMessage, executor::ExecutorMessage, models::{ExecutionReport, TaskModel}, now, server::ServerMessage, tasks::TaskWatcherMessage, types::{DBSender, ExecutorSender, OutputSender, ReactorReceiver, ReactorSender, ServerReceiver, TaskWatcherSender}};
+use crate::{ModelToTask, db::DBMessage, executor::ExecutorMessage, models::{ExecutionReport, TaskModel, TaskError}, now, server::ServerMessage, tasks::TaskWatcherMessage, types::{DBSender, ExecutorSender, OutputSender, ReactorReceiver, ReactorSender, ServerReceiver, TaskWatcherSender}};
 pub use messages::ReactorMessage;
 
 use tracing::{error, info};
@@ -164,14 +164,13 @@ impl Reactor {
                         });
                         for task in tasks.next() {
                             if let Some(task) = task {
-                                let id = task.get_id();
+                                let _id = task.get_id();
                                 inner_sender.send(ReactorMessage::ExecuteTask {
                                     task,
                                 }).await;
                             }
                         }
                     },
-                    
                     ReactorMessage::ExecuteTask { task } => {
                         let id = task.get_id();
                         info!("Sending Execute message to Executor for task {}", id);
@@ -298,6 +297,13 @@ impl Reactor {
                                 // TODO save error
                                 error!("{}", e.to_string());
                                 eprintln!("{}", e.to_string());
+                                error!("{}", e.to_string());
+                                let error = TaskError::generic(task_id, e.to_string());
+                                let (tx, _rx) = oneshot::channel();
+                                inner_sender.send(ReactorMessage::CreateError {
+                                    error,
+                                    resp: tx,
+                                }).await;
                                 resp.send(false);
                             }
                         }
@@ -380,7 +386,6 @@ impl Reactor {
                             };
                         }
                         resp.send(Ok(active_tasks));
-                        
                     }
                     ReactorMessage::ServerGetTask { task_id, resp } => {
                         let (tx, rx) = oneshot::channel();
@@ -447,6 +452,12 @@ impl Reactor {
                         db_sender.send(DBMessage::GetExecutionReport {
                             report_id,
                             resp,
+                        }).await;
+                    }
+                    ReactorMessage::CreateError { error, resp } => {
+                        db_sender.send(DBMessage::CreateError {
+                            error,
+                            resp
                         }).await;
                     }
                 }
