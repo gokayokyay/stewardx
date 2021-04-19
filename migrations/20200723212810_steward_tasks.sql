@@ -8,6 +8,6 @@ CREATE TABLE IF NOT EXISTS steward_tasks (
     frequency text NOT NULL,
     last_execution timestamp,
     next_execution timestamp,
-    exec_count bigint DEFAULT '0' NOT NULL,
+    exec_count bigint DEFAULT 0 NOT NULL,
     PRIMARY KEY (id)
 );

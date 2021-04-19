@@ -65,7 +65,7 @@ async fn main() {
     
     tokio::spawn(async {
         // let task = CmdTask::new(uuid::Uuid::new_v4(), Box::new("/bin/bash temp.sh".to_string()));
-        // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(task), "Every(30 * * * * * *)".to_string())).await;
+        // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(task), "testing".into(), "Every(30 * * * * * *)".to_string())).await;
         // let docker_task = DockerTask::new(uuid::Uuid::new_v4(), DockerImageType::File(format!("from alpine:latest\ncmd sleep 15 && echo 'hello'")), Vec::default());
         // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(docker_task), "gokay-testx-file".into(), "Every(45 * * * * * *)".to_string())).await;
         let mut db_manager = db::DBManager::new(pool, db_rx);
