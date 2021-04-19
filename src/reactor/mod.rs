@@ -136,6 +136,11 @@ impl Reactor {
                     }
                 }
             }
+            macro_rules! server_receiver_dropped {
+                ($resp: expr, $msg: tt) => {
+                    $resp.expect(&format!("Server receiver is dropped, {}", $msg));
+                }
+            }
             let msg_type = message.get_type().to_string();
             info!("Reactor got message {}", msg_type);
             let db_sender = self.db_sender.clone();
@@ -298,23 +303,24 @@ impl Reactor {
                     }
                     ReactorMessage::ServerGetTasks { offset, resp } => {
                         let (db_tx, db_rx) = tokio::sync::oneshot::channel();
-                        db_sender
-                            .send(DBMessage::GetTasks {
-                                offset,
-                                resp: db_tx,
-                            })
-                            .await;
+                        didnt_receive!(
+                            db_sender
+                                .send(DBMessage::GetTasks {
+                                    offset,
+                                    resp: db_tx,
+                                })
+                                .await, "Database", "GetTasks");
                         let result = db_rx.await.unwrap();
-                        resp.send(result);
+                        server_receiver_dropped!(resp.send(result), "ServerGetTasks");
                     }
                     ReactorMessage::ServerExecuteTask { task_id, resp } => {
                         let (db_tx, db_rx) = tokio::sync::oneshot::channel();
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::GetTask {
                                 id: task_id,
                                 resp: db_tx,
                             })
-                            .await;
+                            .await, "Database", "GetTask");
                         let task = db_rx.await.unwrap();
                         match task {
                             Ok(task) => {
@@ -322,13 +328,17 @@ impl Reactor {
                                 ModelToTask!(task => boxed_task);
                                 match boxed_task {
                                     Some(task) => {
-                                        inner_sender
+                                        didnt_receive!(inner_sender
                                             .send(ReactorMessage::ExecuteTask { task })
-                                            .await;
-                                        resp.send(true);
+                                            .await, "Reactor", "ExecuteTask");
+                                        server_receiver_dropped!(resp.send(true), "ServerExecuteTask");
                                     }
                                     None => {
-                                        resp.send(false);
+                                        let task_json = serde_json::to_string(&task).unwrap_or(task.task_type);
+                                        didnt_receive!(inner_sender.send(ReactorMessage::CreateError {
+                                            error: TaskError::generic(task.id, format!("Task couldn't be parsed to boxed task, {}", task_json))
+                                        }).await, "Reactor", "CreateError");
+                                        server_receiver_dropped!(resp.send(false), "ServerExecuteTask");
                                     }
                                 }
                             }
@@ -336,44 +346,44 @@ impl Reactor {
                                 eprintln!("{}", e.to_string());
                                 error!("{}", e.to_string());
                                 let error = TaskError::generic(task_id, e.to_string());
-                                inner_sender
+                                didnt_receive!(inner_sender
                                     .send(ReactorMessage::CreateError { error })
-                                    .await;
-                                resp.send(false);
+                                    .await, "Reactor", "CreateError");
+                                server_receiver_dropped!(resp.send(false), "ServerExecuteTask");
                             }
                         }
                     }
                     ReactorMessage::ServerAbortTask { task_id, resp } => {
-                        executor_sender
+                        didnt_receive!(executor_sender
                             .send(ExecutorMessage::Abort { id: task_id, resp })
-                            .await;
+                            .await, "Executor", "Abort");
                     }
                     ReactorMessage::ServerDeleteTask { task_id, resp } => {
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::DeleteTask { id: task_id, resp })
-                            .await;
+                            .await, "Database", "DeleteTask");
                     }
                     ReactorMessage::UpdateTaskExecution { task_id } => {
                         // Update task
                         let (db_tx, db_rx) = oneshot::channel();
-                        let _res = db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::GetTask {
                                 id: task_id,
                                 resp: db_tx,
                             })
-                            .await;
+                            .await, "Database", "GetTask");
                         // Unwrapping it because we're sure it exists on db possible TODO ?
                         let mut task_model = db_rx.await.unwrap().unwrap();
                         task_model.exec_count += 1;
                         task_model.last_execution = Some(now!());
                         task_model.next_execution = task_model.calc_next_execution();
                         let (db_tx, _) = tokio::sync::oneshot::channel();
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::UpdateTask {
                                 task: task_model,
                                 resp: db_tx,
                             })
-                            .await;
+                            .await, "Database", "UpdateTask");
                     }
                     ReactorMessage::ServerCreateTask {
                         task_name,
@@ -390,7 +400,7 @@ impl Reactor {
                         ) {
                             Ok(s) => s,
                             Err(e) => {
-                                resp.send(Err(e));
+                                server_receiver_dropped!(resp.send(Err(e)), "ServerCreateTask");
                                 return;
                             }
                         };
@@ -402,53 +412,57 @@ impl Reactor {
                             frequency,
                         );
                         let (tx, rx) = tokio::sync::oneshot::channel();
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::CreateTask { task, resp: tx })
-                            .await;
+                            .await, "Database", "CreateTask");
                         let result = rx.await.unwrap();
-                        resp.send(result);
+                        server_receiver_dropped!(resp.send(result), "ServerCreateTask");
                     }
                     ReactorMessage::ServerGetActiveTasks { resp } => {
                         let (e_tx, e_rx) = oneshot::channel();
-                        executor_sender
+                        didnt_receive!(executor_sender
                             .send(ExecutorMessage::GetActiveTaskIDs { resp: e_tx })
-                            .await;
+                            .await, "Executor", "GetActiveTaskIDs");
                         let active_task_ids = e_rx.await.unwrap();
                         let mut active_tasks = vec![];
                         // TODO: Find a better way in future
                         for task_id in active_task_ids {
                             let (db_tx, db_rx) = oneshot::channel();
-                            db_sender
+                            didnt_receive!(db_sender
                                 .clone()
                                 .send(DBMessage::GetTask {
                                     id: task_id,
                                     resp: db_tx,
                                 })
-                                .await;
+                                .await, "Database", "GetTask");
                             let task = db_rx.await.unwrap();
                             match task {
                                 Ok(task) => {
                                     active_tasks.push(task);
                                 }
                                 Err(e) => {
-                                    resp.send(Err(e));
+                                    let error_str = e.to_string();
+                                    server_receiver_dropped!(resp.send(Err(e)), "ServerGetActiveTasks");
+                                    didnt_receive!(inner_sender.send(ReactorMessage::CreateError {
+                                        error: TaskError::generic(uuid::Uuid::default(), error_str)
+                                    }).await, "Reactor", "CreateError");
                                     return;
                                 }
                             };
                         }
-                        resp.send(Ok(active_tasks));
+                        server_receiver_dropped!(resp.send(Ok(active_tasks)), "ServerGetActiveTasks");
                     }
                     ReactorMessage::ServerGetTask { task_id, resp } => {
                         let (tx, rx) = oneshot::channel();
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::GetTask {
                                 id: task_id,
                                 resp: tx,
                             })
-                            .await;
+                            .await, "Database", "GetTask");
 
                         let res = rx.await.unwrap();
-                        resp.send(res);
+                        server_receiver_dropped!(resp.send(res), "ServerGetTask");
                     }
                     ReactorMessage::ServerUpdateTask {
                         task_id,
@@ -458,18 +472,18 @@ impl Reactor {
                         resp,
                     } => {
                         let (task_tx, task_rx) = oneshot::channel();
-                        inner_sender
+                        didnt_receive!(inner_sender
                             .clone()
                             .send(ReactorMessage::ServerGetTask {
                                 task_id,
                                 resp: task_tx,
                             })
-                            .await;
+                            .await, "Reactor", "ServerGetTask");
                         let task = task_rx.await.unwrap();
                         let mut task = match task {
                             Ok(t) => t,
                             Err(e) => {
-                                resp.send(Err(e));
+                                server_receiver_dropped!(resp.send(Err(e)), "ServerUpdateTask");
                                 return;
                             }
                         };
@@ -482,17 +496,21 @@ impl Reactor {
                         ) {
                             Ok(s) => s,
                             Err(e) => {
-                                resp.send(Err(e));
+                                let err_str = e.to_string();
+                                server_receiver_dropped!(resp.send(Err(e)), "ServerUpdateTask");
+                                didnt_receive!(inner_sender.send(ReactorMessage::CreateError {
+                                    error: TaskError::generic(task.id, err_str)
+                                }).await, "Reactor", "CreateError");
                                 return;
                             }
                         };
                         task.serde_string = serde_string;
                         let (db_tx, db_rx) = oneshot::channel();
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::UpdateTask { task, resp: db_tx })
-                            .await;
+                            .await, "Database", "UpdateTask");
                         let result = db_rx.await.unwrap();
-                        resp.send(result);
+                        server_receiver_dropped!(resp.send(result), "ServerUpdateTask");
                     }
                     ReactorMessage::ServerGetExecutionReportsForTask {
                         task_id,
@@ -500,35 +518,35 @@ impl Reactor {
                         resp,
                     } => {
                         let (db_tx, db_rx) = oneshot::channel();
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::GetExecutionReportsForTask {
                                 task_id,
                                 offset,
                                 resp: db_tx,
                             })
-                            .await;
+                            .await, "Database", "GetExecutionReportsForTask");
                         let result = db_rx.await.unwrap();
-                        resp.send(result);
+                        server_receiver_dropped!(resp.send(result), "ServerGetExecutionReportsForTask");
                     }
                     ReactorMessage::ServerGetExecutionReports { offset, resp } => {
                         let (db_tx, db_rx) = oneshot::channel();
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::GetExecutionReports {
                                 offset,
                                 resp: db_tx,
                             })
-                            .await;
+                            .await, "Database", "GetExecutionReports");
                         let result = db_rx.await.unwrap();
-                        resp.send(result);
+                        server_receiver_dropped!(resp.send(result), "ServerGetExecutionReports");
                     }
                     ReactorMessage::ServerGetExecutionReport { report_id, resp } => {
-                        db_sender
+                        didnt_receive!(db_sender
                             .send(DBMessage::GetExecutionReport { report_id, resp })
-                            .await;
+                            .await, "Database", "GetExecutionReport");
                     }
                     ReactorMessage::CreateError { error } => {
-                        let (tx, rx) = oneshot::channel();
-                        db_sender.send(DBMessage::CreateError { error, resp: tx }).await;
+                        let (tx, _rx) = oneshot::channel();
+                        didnt_receive!(db_sender.send(DBMessage::CreateError { error, resp: tx }).await, "Database", "CreateError");
                     }
                 }
             });
@@ -539,9 +557,8 @@ impl Reactor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{tasks::CmdTask, types::BoxedTask};
+    use crate::{tasks::CmdTask};
     use tokio::sync::*;
-    use tokio_stream::StreamExt;
     use uuid::Uuid;
 
     async fn create_long_task() -> CmdTask {
