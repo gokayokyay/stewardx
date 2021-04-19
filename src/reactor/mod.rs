@@ -575,10 +575,10 @@ mod tests {
     #[tokio::test]
     async fn execution_flow() {
         let (db_tx, mut db_rx) = mpsc::channel(32);
-        let (ex_tx, ex_rx) = mpsc::channel(32);
-        let (sv_tx, sv_rx) = mpsc::channel(32);
-        let (tw_tx, tw_rx) = mpsc::channel(32);
-        let (oe_tx, oe_rx) = broadcast::channel(32);
+        let (ex_tx, mut ex_rx) = mpsc::channel(32);
+        let (_sv_tx, sv_rx) = mpsc::channel(32);
+        let (tw_tx, _tw_rx) = mpsc::channel(32);
+        let (oe_tx, _oe_rx) = broadcast::channel(32);
         let server_receiver = std::sync::Arc::new(Mutex::new(sv_rx));
         let (r_tx, r_rx) = mpsc::channel(32);
         let mut reactor = Reactor {
@@ -628,14 +628,17 @@ mod tests {
                 _ => panic!("Shouldn't happen! But when it does, please update the test :)"),
             };
         });
-        let result = tokio::time::timeout(
-            tokio::time::Duration::from_secs_f32(1.2),
-            tokio::spawn(async move {
-                reactor.listen(r_rx).await;
-            }),
-        )
-        .await;
-        // Meaning that (kinda) it has a timeout
-        assert_eq!(result.is_err(), true);
+        tokio::spawn(async move {
+            reactor.listen(r_rx).await;
+        });
+        let result = tokio::time::timeout(tokio::time::Duration::from_secs_f32(1.1), 
+        tokio::spawn(async move {
+            let msg = ex_rx.recv().await;
+            assert_eq!(msg.is_some(), true);
+            let msg = msg.unwrap();
+            let msg_type = msg.get_type();
+            assert_eq!(msg_type, "Execute");
+        })).await;
+        assert_eq!(result.is_ok(), true);
     }
 }
