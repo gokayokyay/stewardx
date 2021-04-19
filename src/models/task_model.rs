@@ -98,6 +98,7 @@ impl TaskModel {
             "CmdTask" => {
                 return crate::tasks::CmdTask::get_serde_from_props(id, task_props);
             }
+            #[cfg(feature = "docker")]
             "DockerTask" => {
                 return crate::tasks::DockerTask::get_serde_from_props(id, task_props);
             }

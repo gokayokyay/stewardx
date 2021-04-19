@@ -4,8 +4,11 @@ use models::{
     OutputModel,
     // TaskModel
 };
+#[cfg(feature = "docker")]
 use once_cell::sync::Lazy;
+
 use reactor::Reactor;
+#[cfg(feature = "server")]
 use server::Server;
 // use shiplift::Docker;
 use std::{sync::Arc};
@@ -26,12 +29,12 @@ mod db;
 mod executor;
 mod models;
 mod reactor;
-mod server;
 mod tasks;
 mod traits;
 mod types;
-
+#[cfg(feature = "docker")]
 static GLOBAL_DOCKER: Lazy<shiplift::Docker> = Lazy::new(|| shiplift::Docker::default());
+mod server;
 
 #[tokio::main]
 async fn main() {
@@ -55,8 +58,11 @@ async fn main() {
     let (ex_tx, ex_rx) = tokio::sync::mpsc::channel(32);
     let (tw_tx, tw_rx) = tokio::sync::mpsc::channel(32);
     let (o_tx, mut o_rx) = tokio::sync::broadcast::channel::<OutputModel>(128);
+    #[cfg(feature = "server")]
     let (sv_tx, sv_rx) = tokio::sync::mpsc::channel(32);
-
+    #[cfg(not(feature = "server"))]
+    let (_sv_tx, sv_rx) = tokio::sync::mpsc::channel(32);
+    
     tokio::spawn(async {
         // let task = CmdTask::new(uuid::Uuid::new_v4(), Box::new("/bin/bash temp.sh".to_string()));
         // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(task), "Every(30 * * * * * *)".to_string())).await;
@@ -84,6 +90,7 @@ async fn main() {
         task_watcher.listen(tw_rx).await;
     });
 
+    #[cfg(feature = "server")]
     tokio::spawn(async move {
         let server = Server::new(sv_tx);
         server.listen(String::from("0.0.0.0"), 3000).await;

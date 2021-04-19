@@ -32,7 +32,6 @@ impl Server {
             // error handler and middlewares.
             .data(self.message_sender.clone())
             // .middleware(Middleware::pre(logger))
-            .scope("/app", app_router())
             .get("/tasks", get_tasks)
             .get("/tasks/:id", get_task)
             .post("/tasks", create_task)
@@ -44,10 +43,12 @@ impl Server {
             .get("/activetasks", get_active_tasks)
             .get("/task/:id/reports", get_reports_for_task)
             .get("/reports", get_reports)
-            .get("/reports/:id", get_report)
+            .get("/reports/:id", get_report);
             // .err_handler_with_info(error_handler)
-            .build()
-            .unwrap();
+        #[cfg(feature = "panel")]
+        let router = router
+            .scope("/app", app_router());
+        let router = router.build().unwrap();
         let service = RouterService::new(router).unwrap();
         let addr = SocketAddr::from_str(format!("{}:{}", host, port).as_str())
             .expect("Invalid host or port.");
