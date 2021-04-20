@@ -3,31 +3,31 @@ use std::str::FromStr;
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub enum Interval {
-    Seconds,
-    Minutes,
-    Hours,
-    Days,
-    Weeks,
-    Months,
-    Years,
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// pub enum Interval {
+//     Seconds,
+//     Minutes,
+//     Hours,
+//     Days,
+//     Weeks,
+//     Months,
+//     Years,
+// }
 
-impl Interval {
-    pub fn to_seconds(&self, value: i64) -> i64 {
-        // Dont judge pls will refactor soon (hopefully)
-        match &self {
-            Interval::Seconds => return value,
-            Interval::Minutes => return value * 60,
-            Interval::Hours => return value * 60 * 60,
-            Interval::Days => return value * 60 * 60 * 24,
-            Interval::Weeks => return value * 60 * 60 * 24 * 7,
-            Interval::Months => return value * 60 * 60 * 24 * 7 * 30,
-            Interval::Years => return value * 60 * 60 * 24 * 7 * 30 * 12,
-        }
-    }
-}
+// impl Interval {
+//     pub fn to_seconds(&self, value: i64) -> i64 {
+//         // Dont judge pls will refactor soon (hopefully)
+//         match &self {
+//             Interval::Seconds => return value,
+//             Interval::Minutes => return value * 60,
+//             Interval::Hours => return value * 60 * 60,
+//             Interval::Days => return value * 60 * 60 * 24,
+//             Interval::Weeks => return value * 60 * 60 * 24 * 7,
+//             Interval::Months => return value * 60 * 60 * 24 * 7 * 30,
+//             Interval::Years => return value * 60 * 60 * 24 * 7 * 30 * 12,
+//         }
+//     }
+// }
 
 pub enum FrequencyDeserializeError {
     MalformedData,

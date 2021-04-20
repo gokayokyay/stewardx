@@ -46,6 +46,7 @@ impl Reactor {
     }
     pub async fn listen_for_server(receiver: &mut ServerReceiver, inner_sender: ReactorSender) {
         while let Some(message) = receiver.recv().await {
+            info!("Received ServerMessage::{}", message.get_type());
             let reactor_message = match message {
                 ServerMessage::GetTasks { offset, resp } => {
                     ReactorMessage::ServerGetTasks { offset, resp }

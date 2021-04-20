@@ -1,9 +1,7 @@
 use futures::StreamExt;
-use tokio::fs::File;
-// use tokio_stream::StreamExt;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use shiplift::{tty::TtyChunk, BuildOptions, ContainerOptions, PullOptions};
+use shiplift::{tty::TtyChunk, ContainerOptions, PullOptions};
 use tempfile::{Builder, TempDir};
 use uuid::Uuid;
 
@@ -56,7 +54,7 @@ impl Executable for DockerTask {
                 let temp_dir = match temp_dir {
                     Ok(d) => d,
                     Err(e) => {
-                        panic!(e.to_string());
+                        panic!("{}", e.to_string());
                     }
                 };
                 let path = temp_dir.path().join("Dockerfile");
@@ -172,6 +170,19 @@ impl FromJson for DockerTask {
 impl GetSerdeFromProps for DockerTask {
     fn get_serde_from_props(id: Uuid, value: serde_json::Value) -> Result<String, anyhow::Error> {
         // return Err(Self::prop_not_found(String::from("aa")));
+        let env = &value["env"].as_array().map_or(Vec::new(), |a| {
+            let vec_value = a.to_vec();
+            vec_value.iter().fold(Vec::default(), |mut env_value, a| {
+                match a {
+                    serde_json::Value::String(s) => {
+                        env_value.push(s.to_string());
+                        env_value
+                    }
+                    _ => env_value
+                }
+            }).iter().map(|v| v.to_string()).collect()
+        });
+        let env = env.to_owned();
         let image = &value["image"];
         if image.is_null() {
             return Err(Self::prop_not_found("image"));
@@ -189,7 +200,7 @@ impl GetSerdeFromProps for DockerTask {
                 let docker_task = Self::new(
                     id,
                     DockerImageType::File(content.as_str().unwrap().to_string()),
-                    Vec::default(),
+                    env,
                 );
                 return Ok(docker_task.to_string());
             }
@@ -197,7 +208,7 @@ impl GetSerdeFromProps for DockerTask {
                 let docker_task = Self::new(
                     id,
                     DockerImageType::Image(content.as_str().unwrap().to_string()),
-                    Vec::default(),
+                    env,
                 );
                 return Ok(docker_task.to_string());
             }
