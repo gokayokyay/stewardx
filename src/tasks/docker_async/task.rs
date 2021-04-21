@@ -58,7 +58,7 @@ impl Executable for DockerTask {
                     }
                 };
                 let path = temp_dir.path().join("Dockerfile");
-                tokio::fs::write(path.clone(), contents).await;
+                let _ = tokio::fs::write(path.clone(), contents).await;
                 let image = format!(
                     "stewardx:{}",
                     self.id.to_simple().encode_lower(&mut Uuid::encode_buffer())
@@ -124,7 +124,7 @@ impl Executable for DockerTask {
     async fn abort(&mut self) -> bool {
         let docker = &GLOBAL_DOCKER;
         let container = docker.containers().get(&self.container_id);
-        container.stop(None).await;
+        let _ = container.stop(None).await;
         match container.kill(None).await {
             Ok(_) => true,
             Err(_) => false,
