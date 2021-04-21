@@ -1,5 +1,5 @@
 use tokio_stream::StreamExt;
-use tracing::{info, instrument};
+use tracing::{info, instrument, warn};
 
 use crate::models::{ExecutionReport, OutputModel};
 
@@ -24,13 +24,23 @@ impl TaskWatcher {
                         Ok(mut stream) => {
                             let mut output_vec = vec![];
                             while let Some(output) = stream.next().await {
-                                output_resp.send(OutputModel::new(task_id, output.clone()));
+                                match output_resp.send(OutputModel::new(task_id, output.clone())) {
+                                    Err(_) => {
+                                        warn!("Output received for task: {}, but nothing listens for it.", task_id);
+                                    },
+                                    _ => {}
+                                };
                                 output_vec.push(output);
                             }
                             let exec_report = ExecutionReport::new(task_id, true, output_vec);
-                            resp.send(exec_report);
+                            // If this fails, output isn't really a problem...
+                            let _ = resp.send(exec_report);
                         }
-                        Err(_e) => {}
+                        Err(e) => {
+                            let report = ExecutionReport::new_string_output(uuid::Uuid::new_v4(), task_id, chrono::Utc::now().naive_utc(), false, e.to_string());
+                            // Same reason as above
+                            let _ = resp.send(report);
+                        }
                     },
                 }
             });

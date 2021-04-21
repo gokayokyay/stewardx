@@ -32,16 +32,42 @@ macro_rules! response_json {
     };
 }
 
+macro_rules! reactor_failed {
+    ($send: expr, $msg: tt) => {
+        match $send {
+            Ok(_) => {},
+            Err(e) => {
+                error!("Reactor didnt receive the {} message! Either it's failed or didn't start.", $msg);
+                error!("{}", e.to_string());
+                return Err(anyhow::anyhow!(serde_json::json!({
+                    "error": "Reactor isn't awake."
+                })));
+            }
+        }
+    }
+}
+
+macro_rules! empty_malformed_body {
+    () => {
+        return {
+            let obj = serde_json::json!({
+                "error": "Body is malformed/empty, please try again."
+            });
+            let obj = obj.to_string();
+            response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj)
+        };
+    }
+}
+
 pub async fn get_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
     let (tx, rx) = tokio::sync::oneshot::channel();
     let sender = req.data::<Sender<ServerMessage>>().unwrap();
-    sender
+    reactor_failed!(sender
         .send(ServerMessage::GetTasks {
             offset: None,
             resp: tx,
         })
-        .await;
-    println!("uri: {}", req.uri());
+        .await, "GetTasks");
     let result = rx.await.unwrap();
     match result {
         Ok(result) => response_json!(body: &result),
@@ -59,12 +85,12 @@ pub async fn get_task(req: Request<Body>) -> Result<Response<Body>, anyhow::Erro
     let (tx, rx) = tokio::sync::oneshot::channel();
     let sender = req.data::<Sender<ServerMessage>>().unwrap();
     let task_id = req.param("id").unwrap();
-    sender
+    reactor_failed!(sender
         .send(ServerMessage::GetTask {
             task_id: Uuid::from_str(task_id).unwrap(),
             resp: tx,
         })
-        .await;
+        .await, "GetTask");
 
     let result = rx.await.unwrap();
     match result {
@@ -94,9 +120,9 @@ pub async fn exec_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow:
         {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             let task_id = json_value.task_id;
-            sender
+            reactor_failed!(sender
                 .send(ServerMessage::ExecuteTask { task_id, resp: tx })
-                .await;
+                .await, "ExecuteTask");
             if let Ok(_) = rx.await {
                 return response_json!(
                     body: &serde_json::json!({
@@ -113,13 +139,7 @@ pub async fn exec_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow:
             }
         }
     };
-    return Err(anyhow::anyhow!(""));
-    // println!("{:?}", task_id);
-    // sender.send(ServerMessage::EXECUTE_TASK {
-    //     task_id: (),
-    //     resp: tx,
-    // }).await;
-    // panic!("AAAA")
+    empty_malformed_body!()
 }
 
 pub async fn exec_task_url(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
@@ -137,18 +157,9 @@ pub async fn exec_task_url(req: Request<Body>) -> Result<Response<Body>, anyhow:
             return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
         }
     };
-    match sender
+    reactor_failed!(sender
         .send(ServerMessage::ExecuteTask { task_id, resp: tx })
-        .await
-    {
-        Ok(_) => {}
-        Err(e) => {
-            error!("{}", e.to_string());
-            return Err(anyhow::anyhow!(serde_json::json!({
-                "error": "Reactor/Executor isn't awake."
-            })));
-        }
-    };
+        .await, "ExecuteTask");
     if let Ok(_) = rx.await {
         return response_json!(
             body: &serde_json::json!({
@@ -178,9 +189,9 @@ pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow
         {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             let task_id = json_value.task_id;
-            sender
+            reactor_failed!(sender
                 .send(ServerMessage::AbortTask { task_id, resp: tx })
-                .await;
+                .await, "AbortTask");
             if let Ok(result) = rx.await {
                 let status;
                 if result {
@@ -200,7 +211,7 @@ pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow
             }
         }
     }
-    panic!();
+    empty_malformed_body!()
 }
 
 pub async fn delete_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
@@ -216,16 +227,11 @@ pub async fn delete_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
         {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
             let task_id = json_value.task_id;
-            sender
+            reactor_failed!(sender
                 .send(ServerMessage::DeleteTask { task_id, resp: tx })
-                .await;
-            if let Ok(result) = rx.await {
+                .await, "DeleteTask");
+            if let Ok(_result) = rx.await {
                 let status = "success";
-                // if result {
-                //     status = "success"
-                // } else {
-                //     status = "error"
-                // }
                 return response_json!(body: &serde_json::json!({ "status": status }));
             } else {
                 println!("Abort RX - server waiting failed");
@@ -240,7 +246,7 @@ pub async fn delete_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
             println!("{:?}", &body);
         }
     }
-    panic!();
+    empty_malformed_body!()
 }
 
 pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
@@ -258,7 +264,7 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
             serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error>
         {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
-            sender
+            reactor_failed!(sender
                 .send(ServerMessage::CreateTask {
                     task_name: json_value.task_name,
                     frequency: json_value.frequency,
@@ -266,7 +272,7 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                     task_props: json_value.task_props,
                     resp: tx,
                 })
-                .await;
+                .await, "CreateTask");
             let res = match rx.await {
                 Ok(res) => res,
                 Err(e) => {
@@ -299,15 +305,15 @@ pub async fn create_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
             println!("{:?}", &body);
         }
     }
-    panic!();
+    empty_malformed_body!()
 }
 
 pub async fn get_active_tasks(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
     let (tx, rx) = tokio::sync::oneshot::channel();
     let sender = req.data::<Sender<ServerMessage>>().unwrap();
-    sender
+    reactor_failed!(sender
         .send(ServerMessage::GetActiveTasks { resp: tx })
-        .await;
+        .await, "GetActiveTasks");
 
     let result = rx.await.unwrap();
     match result {
@@ -350,7 +356,7 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
             serde_json::from_slice(&body) as Result<RequestBody, serde_json::Error>
         {
             let sender = req.data::<Sender<ServerMessage>>().unwrap();
-            sender
+            reactor_failed!(sender
                 .send(ServerMessage::UpdateTask {
                     task_id: task_id,
                     task_name: json_value.task_name,
@@ -358,7 +364,7 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                     task_props: json_value.task_props,
                     resp: tx,
                 })
-                .await;
+                .await, "UpdateTask");
             let res = match rx.await {
                 Ok(res) => res,
                 Err(e) => {
@@ -389,15 +395,10 @@ pub async fn update_task(mut req: Request<Body>) -> Result<Response<Body>, anyho
                 }
             }
         } else {
-            return Err(anyhow::anyhow!(serde_json::json!({
-                "error": "Malformed body."
-            })));
+            println!("{:?}", body);
         }
-    } else {
-        return Err(anyhow::anyhow!(serde_json::json!({
-            "error": "Malformed request."
-        })));
     }
+    empty_malformed_body!()
 }
 
 pub async fn get_reports_for_task(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
@@ -427,19 +428,20 @@ pub async fn get_reports_for_task(req: Request<Body>) -> Result<Response<Body>, 
         }
     };
     let offset = query_map.get("offset").and_then(|x| x.parse::<i64>().ok());
-    sender
+    reactor_failed!(sender
         .send(ServerMessage::GetExecutionReportsForTask {
             task_id,
             offset,
             resp: tx,
         })
-        .await;
+        .await, "GetExecutionReportsForTask");
     let result = rx.await.unwrap();
     match result {
         Ok(reports) => {
             return response_json!(body: &reports);
         }
         Err(e) => {
+            error!("{}", e.to_string());
             return Err(anyhow::anyhow!(serde_json::json!({
                 "error": "DB Error."
             })));
@@ -462,18 +464,19 @@ pub async fn get_report(req: Request<Body>) -> Result<Response<Body>, anyhow::Er
             return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
         }
     };
-    sender
+    reactor_failed!(sender
         .send(ServerMessage::GetExecutionReport {
             resp: tx,
             report_id,
         })
-        .await;
+        .await, "GetExecutionReport");
     let result = rx.await.unwrap();
     match result {
         Ok(reports) => {
             return response_json!(body: &reports);
         }
         Err(e) => {
+            error!("{}", e.to_string());
             return Err(anyhow::anyhow!(serde_json::json!({
                 "error": "DB Error."
             })));
@@ -496,15 +499,16 @@ pub async fn get_reports(req: Request<Body>) -> Result<Response<Body>, anyhow::E
         }
     };
     let offset = query_map.get("offset").and_then(|x| x.parse::<i64>().ok());
-    sender
+    reactor_failed!(sender
         .send(ServerMessage::GetExecutionReports { offset, resp: tx })
-        .await;
+        .await, "GetExecutionReports");
     let result = rx.await.unwrap();
     match result {
         Ok(reports) => {
             return response_json!(body: &reports);
         }
         Err(e) => {
+            error!("{}", e.to_string());
             return Err(anyhow::anyhow!(serde_json::json!({
                 "error": "DB Error."
             })));
