@@ -58,7 +58,12 @@ impl Executable for DockerTask {
                     }
                 };
                 let path = temp_dir.path().join("Dockerfile");
-                let _ = tokio::fs::write(path.clone(), contents).await;
+                match tokio::fs::write(path.clone(), contents).await {
+                    Err(e) => {
+                        return Err(TaskError::generic(self.id, e.to_string()));
+                    },
+                    _ => {}
+                };
                 let image = format!(
                     "stewardx:{}",
                     self.id.to_simple().encode_lower(&mut Uuid::encode_buffer())
