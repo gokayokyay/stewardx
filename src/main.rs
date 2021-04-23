@@ -32,9 +32,12 @@ mod reactor;
 mod tasks;
 mod traits;
 mod types;
+mod config;
 #[cfg(feature = "docker")]
 static GLOBAL_DOCKER: Lazy<shiplift::Docker> = Lazy::new(|| shiplift::Docker::default());
 mod server;
+
+static CONFIG: Lazy<config::Config> = Lazy::new(|| config::Config::prepare_config());
 
 #[tokio::main]
 async fn main() {
@@ -93,7 +96,8 @@ async fn main() {
     #[cfg(feature = "server")]
     tokio::spawn(async move {
         let server = Server::new(sv_tx);
-        server.listen(String::from("0.0.0.0"), 3000).await;
+        let port = (std::env::var("STEWARDX_SERVER_PORT").unwrap_or("3000".to_string())).parse::<i64>().expect("STEWARDX_SERVER_PORT is not a number?");
+        server.listen(String::from("0.0.0.0"), port).await;
     });
 
     let _ = tokio::spawn(async {
