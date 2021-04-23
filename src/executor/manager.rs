@@ -124,6 +124,7 @@ fn get_handle_index(task_handles: &mut Vec<TaskHandle>, task_id: Uuid) -> Option
     return None;
 }
 
+#[cfg(feature = "cmd")]
 #[cfg(test)]
 mod tests {
     use super::*;

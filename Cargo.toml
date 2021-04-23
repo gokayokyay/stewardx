@@ -30,7 +30,8 @@ tempfile = { version = "3.2.0", optional = true }
 url = "2.2.1"
 
 [features]
-default = ["docker", "panel"]
+default = ["docker", "panel", "cmd"]
 docker = ["shiplift", "once_cell", "tempfile"]
 panel = ["server"]
 server = []
+cmd = []

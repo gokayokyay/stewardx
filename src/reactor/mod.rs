@@ -555,6 +555,7 @@ impl Reactor {
     }
 }
 
+#[cfg(feature = "cmd")]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -95,6 +95,7 @@ impl TaskModel {
     ) -> Result<String, anyhow::Error> {
         use crate::traits::GetSerdeFromProps;
         match task_type.as_str() {
+            #[cfg(feature = "cmd")]
             "CmdTask" => {
                 return crate::tasks::CmdTask::get_serde_from_props(id, task_props);
             }

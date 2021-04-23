@@ -1,10 +1,11 @@
-mod cmd_async;
 mod errors;
 mod frequency;
 mod messages;
 mod watcher;
+#[cfg(feature = "cmd")]
+mod cmd_async;
+#[cfg(feature = "cmd")]
 pub use cmd_async::CmdTask;
-
 #[cfg(feature = "docker")]
 mod docker_async;
 #[cfg(feature = "docker")]
@@ -18,6 +19,7 @@ pub use watcher::TaskWatcher;
 #[macro_export]
 macro_rules! ModelToTask {
     ($r: ident => $m:expr) => {
+        #[cfg(feature = "cmd")]
         use crate::tasks::CmdTask;
         #[cfg(feature = "docker")]
         use crate::tasks::DockerTask;
@@ -25,6 +27,7 @@ macro_rules! ModelToTask {
         use crate::traits::FromJson;
         use crate::types::BoxedTask;
         let task: Option<BoxedTask> = match $r.task_type.as_str() {
+            #[cfg(feature = "cmd")]
             "CmdTask" => Some(Box::new(
                 CmdTask::from_json($r.serde_string.clone()).unwrap(),
             )),
