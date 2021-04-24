@@ -3,19 +3,21 @@ use std::{path::PathBuf, str::FromStr};
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     pub index_file_path: String,
+    pub logs_folder_path: String
 }
 
 impl Default for Config {
     fn default() -> Self {
-        return Self::new("index.html".into())
+        return Self::new("index.html".into(), "logs".into())
     }
 }
 
 // We want this to be blocking
 impl Config {
-    pub fn new(index_file_path: String) -> Self {
+    pub fn new(index_file_path: String, logs_folder_path: String) -> Self {
         Self {
-            index_file_path
+            index_file_path,
+            logs_folder_path
         }
     }
     fn create_config_directories() -> PathBuf {
@@ -88,6 +90,16 @@ impl Config {
         }
         let mut config_dir = Self::get_config_dir();
         config_dir.extend(index_path_string.split("/"));
+        let index_path = config_dir;
+        return index_path;
+    }
+    pub fn get_logs_folder_path(&self) -> PathBuf {
+        let logs_folder_path = &self.logs_folder_path;
+        if logs_folder_path.starts_with("/") {
+            return PathBuf::from_str(&logs_folder_path).unwrap();
+        }
+        let mut config_dir = Self::get_config_dir();
+        config_dir.extend(logs_folder_path.split("/"));
         let index_path = config_dir;
         return index_path;
     }

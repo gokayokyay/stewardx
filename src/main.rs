@@ -21,7 +21,7 @@ use tasks::{
 use tracing::subscriber::set_global_default;
 use tracing_bunyan_formatter::{
     BunyanFormattingLayer,
-    // JsonStorageLayer
+    JsonStorageLayer
 };
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Registry};
 
@@ -41,15 +41,18 @@ static CONFIG: Lazy<config::Config> = Lazy::new(|| config::Config::prepare_confi
 
 #[tokio::main]
 async fn main() {
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let _formatting_layer = BunyanFormattingLayer::new(
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::default());
+    let logs_dir = CONFIG.get_logs_folder_path();
+    let file_appender = tracing_appender::rolling::hourly(logs_dir, "stewardx.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let formatting_layer = BunyanFormattingLayer::new(
         "stewardx".into(),
         // Output the formatted spans to stdout.
-        std::io::stdout,
+        non_blocking,
     );
-    let subscriber = Registry::default().with(env_filter);
-    // .with(JsonStorageLayer)
-    // .with(formatting_layer);
+    let subscriber = Registry::default().with(env_filter)
+        .with(JsonStorageLayer)
+        .with(formatting_layer);
     set_global_default(subscriber).expect("Failed to set subscriber");
     let pool = match db::connect(&std::env::var("DATABASE_URL").unwrap()).await {
         Ok(p) => p,

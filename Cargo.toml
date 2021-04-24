@@ -29,6 +29,7 @@ once_cell = { version = "1.7.2", optional = true }
 tempfile = { version = "3.2.0", optional = true }
 url = "2.2.1"
 home = "0.5.3"
+tracing-appender = "0.1.2"
 
 [features]
 default = ["docker", "panel", "cmd"]
