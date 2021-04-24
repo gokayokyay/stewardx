@@ -54,7 +54,7 @@ async fn main() {
         .with(JsonStorageLayer)
         .with(formatting_layer);
     set_global_default(subscriber).expect("Failed to set subscriber");
-    let pool = match db::connect(&std::env::var("DATABASE_URL").unwrap()).await {
+    let pool = match db::connect(&std::env::var("STEWARDX_DATABASE_URL").unwrap()).await {
         Ok(p) => p,
         Err(_e) => {
             panic!("Database connection failed. Check if your connection URL is correct and your DB is reachable.")
