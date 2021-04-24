@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
+use tracing::{instrument, error};
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -62,6 +63,13 @@ impl ToString for CmdTask {
 }
 #[async_trait]
 impl Executable for CmdTask {
+    #[instrument(
+        name = "Executing CmdTask",
+        skip(self),
+        fields(
+            task_id = %self.id,
+        )
+    )]
     async fn exec(&mut self) -> Result<BoxedStream, TaskError> {
         let (prog, args) = CmdTask::parse_cmd(&self.id, &self.command).unwrap();
         let mut cmd = tokio::process::Command::new(prog);
@@ -71,8 +79,9 @@ impl Executable for CmdTask {
         cmd.stdout(Stdio::piped());
         let child = match cmd.spawn() {
             Ok(c) => c,
-            Err(_e) => {
-                panic!();
+            Err(e) => {
+                error!("Execution failed, error while trying to spawn the command: {}", e);
+                panic!("{}", e.to_string());
                 // return Err(TaskError::TaskExecution(self.get_id(), e.to_string()));
             }
         };
@@ -84,7 +93,8 @@ impl Executable for CmdTask {
         let stdout = match child_out.take() {
             Some(s) => s,
             None => {
-                panic!();
+                error!("Couldn't get stdout handle of cmd task.");
+                return Ok(Box::new(tokio_stream::empty()));
             }
         };
         let reader = BufReader::new(stdout);
@@ -101,9 +111,14 @@ impl Executable for CmdTask {
     fn get_type(&self) -> String {
         Self::get_task_type()
     }
-
+    #[instrument(
+        name = "Aborting CmdTask",
+        skip(self),
+        fields(
+            task_id = %self.id,
+        )
+    )]
     async fn abort(&mut self) -> bool {
-        // println!("{:?}", self);
         let handle = &mut self.child_handle.lock().await;
         let handle = handle.as_mut().unwrap();
         match handle.kill().await {
