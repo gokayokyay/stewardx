@@ -97,7 +97,8 @@ async fn main() {
     tokio::spawn(async move {
         let server = Server::new(sv_tx);
         let port = (std::env::var("STEWARDX_SERVER_PORT").unwrap_or("3000".to_string())).parse::<i64>().expect("STEWARDX_SERVER_PORT is not a number?");
-        server.listen(String::from("0.0.0.0"), port).await;
+        let host = std::env::var("STEWARDX_SERVER_HOST").unwrap_or("127.0.0.1".to_string());
+        server.listen(host, port).await;
     });
 
     let _ = tokio::spawn(async {
@@ -114,11 +115,4 @@ async fn main() {
         reactor.listen(rx).await;
     })
     .await;
-    // let dbman = db::DBManager::new(pool, db_rx);
-    // dbman.delete_task(uuid::Uuid::from_str("6c76b64f-6497-43dd-bd2b-05a1931164bb").unwrap()).await;
-    // let task = CmdTask::new(uuid::Uuid::new_v4(), Box::new("cat Cargo.toml".to_string()));
-    // DBManager::create_task(&mut pool.acquire().await.unwrap(), TaskModel::from_boxed_task(Box::new(task), "Every(30 * * * * * *)".to_string())).await;
-    // // // let t = dbman.get_task(uuid::Uuid::from_str("9de07abf-7832-4ae2-be61-793912bb5805").unwrap()).await;
-    // // // println!("{:?}", t);
-    // dbman.create_task(TaskModel::from_boxed_task(Box::new(task), "Every(30 * * * * * *)".to_string())).await;
 }
