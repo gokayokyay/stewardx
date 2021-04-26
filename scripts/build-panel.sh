@@ -1,6 +1,15 @@
 #!/bin/bash
 
-STEWARDX_HOME=$(pwd)
+### This script clones the temporary panel of StewardX to your HOME directory
+### builds it then moves it to directory of STEWARDX_CONFIG
+
+if [[ -z "${STEWARDX_CONFIG}" ]]; then
+  STEWARDX_CONFIG_DIR=$HOME/.config/stewardx/
+else
+  STEWARDX_CONFIG_DIR="$(dirname ${STEWARDX_CONFIG})"
+fi
+
+mkdir -p $STEWARDX_CONFIG_DIR
 
 cd $HOME
 if [ -d "$HOME/stewardx-panel" ] 
@@ -9,8 +18,8 @@ then
     cd stewardx-panel
     git pull
 else
-    echo "Directort stewardx-panel doesn't exists, cloning it..."
-    git clone git@github.com:gokayokyay/stewardx-panel.git
+    echo "Directory stewardx-panel doesn't exists, cloning it..."
+    git clone https://github.com/gokayokyay/stewardx-panel.git
     cd stewardx-panel
 fi
 
@@ -21,5 +30,5 @@ npm install
 echo "Now building it, this can take a while"
 npm run build
 echo "Okay, now moving the artifact into the panel directory."
-mv dist/index.html $STEWARDX_HOME/panel
+mv dist/index.html $STEWARDX_CONFIG_DIR/
 echo "Done."
