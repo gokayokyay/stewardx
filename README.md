@@ -107,7 +107,7 @@ I'll be adding more examples/tutorials soon.
 - [ ] Build a minimal control panel
 - [X] Cover errors
 - [ ] Test coverage
-- [ ] Write documentation
+- [ ] Write documentation - WIP See [StewardX Docs](https://github.com/gokayokyay/stewardx-docs)
 - [X] Use features to make panel and docker features optional
 
 ### Roadmap not in order
