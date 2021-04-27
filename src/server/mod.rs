@@ -32,11 +32,6 @@ impl Server {
             // error handler and middlewares.
             .data(self.message_sender.clone())
             // .middleware(Middleware::pre(logger))
-            .get("/tasks", get_tasks)
-            .get("/tasks/:id", get_task)
-            .post("/tasks", create_task)
-            .post("/tasks/:id", update_task)
-            .delete("/tasks", delete_task)
             .post("/execute", exec_task)
             .post("/execute/:id", exec_task_url)
             .post("/abort", abort_task)
@@ -45,6 +40,15 @@ impl Server {
             .get("/reports", get_reports)
             .get("/reports/:id", get_report);
             // .err_handler_with_info(error_handler)
+        
+        #[cfg(feature = "server-crud")]
+        let router = router
+            .get("/tasks", get_tasks)
+            .get("/tasks/:id", get_task)
+            .post("/tasks", create_task)
+            .post("/tasks/:id", update_task)
+            .delete("/tasks", delete_task);
+
         #[cfg(feature = "panel")]
         let router = router
             .scope("/app", app_router());

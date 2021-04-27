@@ -32,8 +32,9 @@ home = "0.5.3"
 tracing-appender = "0.1.2"
 
 [features]
-default = ["docker", "panel", "cmd"]
+default = ["docker", "panel", "cmd", "server-crud"]
 docker = ["shiplift", "once_cell", "tempfile"]
 panel = ["server"]
+server-crud = []
 server = []
 cmd = []
