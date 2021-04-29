@@ -8,6 +8,12 @@ StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/).
 
 *This project is under heavy development, it can (and probably will) break. Please do not use in production yet*
 
+### Related repositories
+| Repository                                                   | Description                    |
+|--------------------------------------------------------------|--------------------------------|
+| [Panel](https://github.com/gokayokyay/stewardx-panel)        | Proof of concept control panel |
+| [Documentation](https://github.com/gokayokyay/stewardx-docs) | Documentation repository       |
+
 ### Features
  - It's pure Rust and *lightweight*.
  - Uses PostgreSQL as database to persist the tasks.
