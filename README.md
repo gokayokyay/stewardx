@@ -113,11 +113,12 @@ curl --header "Content-Type: application/json" http://localhost:3000/task/#your 
 And you'll get your execution report :)
 
 ### Roadmap to v1
-- [ ] Build a minimal control panel
+- [X] Build a minimal control panel
 - [X] Cover errors
 - [ ] Test coverage
 - [X] Write documentation - [StewardX Docs](https://github.com/gokayokyay/stewardx-docs)
 - [X] Use features to make panel and docker features optional
+- [ ] Precompiled binaries
 
 ### Roadmap not in order
 - [ ] Add websocket support
