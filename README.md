@@ -24,6 +24,10 @@ StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/).
  - Has multiple task frequencies, currently it supports `cron` and `hook`.
  - Stores outputs of tasks.
 
+### Tutorials
+
+- [Building your own CI](https://stewardx.dev/Tutorials/tutorial-ci)
+
 ### Getting Started
 #### Prerequisites
 - Docker (optional)
@@ -107,8 +111,6 @@ curl --header "Content-Type: application/json" http://localhost:3000/task/#your 
 ```
 
 And you'll get your execution report :)
-
-I'll be adding more examples/tutorials soon.
 
 ### Roadmap to v1
 - [ ] Build a minimal control panel
