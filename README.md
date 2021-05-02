@@ -1,3 +1,4 @@
+[![][Logo]][Website] 
 # StewardX
 
 **S**cheduled **T**ask **E**xecutor **W**ith **A**synchronous **R**untime and **D**atabase **X**
@@ -113,13 +114,17 @@ I'll be adding more examples/tutorials soon.
 - [ ] Build a minimal control panel
 - [X] Cover errors
 - [ ] Test coverage
-- [ ] Write documentation - WIP See [StewardX Docs](https://github.com/gokayokyay/stewardx-docs)
+- [X] Write documentation - [StewardX Docs](https://github.com/gokayokyay/stewardx-docs)
 - [X] Use features to make panel and docker features optional
 
 ### Roadmap not in order
 - [ ] Add websocket support
 - [ ] Add one or more task types
 - [ ] Create a CLI app
-- [ ] Create a cute logo
+- [X] Create a cute logo - 🥳
 - [ ] Create examples
 - [ ] Create a landing page
+
+
+[Website]: https://stewardx.dev
+[Logo]: https://stewardx.dev/img/stewardx-logo.svg
