@@ -1,23 +1,27 @@
-use std::{path::PathBuf, str::FromStr};
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     pub index_file_path: String,
-    pub logs_folder_path: String
+    pub logs_folder_path: String,
+    pub panel_feature: bool,
+    pub server_crud_feature: bool
 }
 
 impl Default for Config {
     fn default() -> Self {
-        return Self::new("index.html".into(), "logs".into())
+        return Self::new("index.html".into(), "logs".into(), true, true)
     }
 }
 
 // We want this to be blocking
 impl Config {
-    pub fn new(index_file_path: String, logs_folder_path: String) -> Self {
+    pub fn new(index_file_path: String, logs_folder_path: String, panel_feature: bool, server_crud_feature: bool) -> Self {
         Self {
             index_file_path,
-            logs_folder_path
+            logs_folder_path,
+            panel_feature,
+            server_crud_feature
         }
     }
     fn create_config_directories() -> PathBuf {
@@ -102,5 +106,11 @@ impl Config {
         config_dir.extend(logs_folder_path.split("/"));
         let index_path = config_dir;
         return index_path;
+    }
+    pub fn get_features<'a>(&'a self) -> HashMap<&'a str, bool> {
+        let mut features = HashMap::new();
+        features.insert("panel", self.panel_feature);
+        features.insert("server_crud", self.server_crud_feature);
+        features
     }
 }
