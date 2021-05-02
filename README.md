@@ -130,4 +130,4 @@ And you'll get your execution report :)
 
 
 [Website]: https://stewardx.dev
-[Logo]: https://stewardx.dev/img/logo.svg
+[Logo]: https://stewardx.dev/img/stewardx-logo.svg
