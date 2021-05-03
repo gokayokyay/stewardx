@@ -118,7 +118,7 @@ And you'll get your execution report :)
 - [ ] Test coverage
 - [X] Write documentation - [StewardX Docs](https://github.com/gokayokyay/stewardx-docs)
 - [X] Use features to make panel and docker features optional
-- [ ] Precompiled binaries
+- [X] Precompiled binaries (Currently linux only)
 
 ### Roadmap not in order
 - [ ] Add websocket support
