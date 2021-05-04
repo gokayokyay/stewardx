@@ -373,18 +373,25 @@ impl Reactor {
                                 resp: db_tx,
                             })
                             .await, "Database", "GetTask");
-                        // Unwrapping it because we're sure it exists on db possible TODO ?
+                        // Unwrapping it because we're sure it exists on db, possible TODO ?
                         let mut task_model = db_rx.await.unwrap().unwrap();
                         task_model.exec_count += 1;
                         task_model.last_execution = Some(now!());
                         task_model.next_execution = task_model.calc_next_execution();
-                        let (db_tx, _) = tokio::sync::oneshot::channel();
+                        let (db_tx, db_rx) = tokio::sync::oneshot::channel();
                         didnt_receive!(db_sender
                             .send(DBMessage::UpdateTask {
                                 task: task_model,
                                 resp: db_tx,
                             })
                             .await, "Database", "UpdateTask");
+                        // Doing this because UpdateTaskExecution doesn't have a resp
+                        // Which causes db_rx to drop, which is considered as an error
+                        // but it's not, it's how didnt_receive! macro works by default.
+
+                        // Another note: This leads tokio task to continue it's existence,
+                        // possible problem in future? Idk, we'll see.
+                        let _ = db_rx.await;
                     }
                     ReactorMessage::ServerCreateTask {
                         task_name,
