@@ -1,6 +1,6 @@
 [package]
 name = "stewardx"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Gökay Okyay <gokayokyay@hotmail.com>"]
 edition = "2018"
 
