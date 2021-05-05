@@ -44,7 +44,7 @@ StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/).
 - Rust
 - git
 
-Until the prebuilt binaries are released, you can build StewardX on your own.
+Until the prebuilt binaries are released, (Linux x64 binaries are [released](https://github.com/gokayokyay/stewardx/releases/latest) WOOT 🥳) you can build StewardX on your own.
 First install the Rust itself by following the instructions on: [Rustup](https://rustup.rs/)
 Then clone the repository
 ```bash
@@ -137,6 +137,7 @@ And you'll get your execution report :)
 - [X] Create a cute logo - 🥳
 - [ ] Create examples
 - [ ] Create a landing page
+- [ ] Create a GUI controller
 
 
 
