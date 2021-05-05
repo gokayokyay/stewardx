@@ -129,5 +129,14 @@ And you'll get your execution report :)
 - [ ] Create a landing page
 
 
+
+## License
+
+Licensed under
+
+-   Apache License, Version 2.0
+    ([LICENSE](LICENSE) or http://www.apache.org/licenses/LICENSE-2.0)
+
+
 [Website]: https://stewardx.dev
 [Logo]: https://stewardx.dev/img/stewardx-logo.svg
