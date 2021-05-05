@@ -214,6 +214,40 @@ pub async fn abort_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow
     empty_malformed_body!()
 }
 
+pub async fn abort_task_url(req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let sender = req.data::<Sender<ServerMessage>>().unwrap();
+    let task_id = match req.param("id") {
+        Some(id) => Uuid::from_str(id).unwrap(),
+        None => {
+            let obj = serde_json::json!({
+                "error": "Missing url parameter: id."
+            });
+            let obj = obj.to_string();
+            println!("obj {:?}", obj);
+
+            return response_json!(status: hyper::StatusCode::BAD_REQUEST, body: &obj);
+        }
+    };
+    reactor_failed!(sender
+        .send(ServerMessage::AbortTask { task_id, resp: tx })
+        .await, "AbortTask");
+    if let Ok(_) = rx.await {
+        return response_json!(
+            body: &serde_json::json!({
+                 "status": "success"
+             })
+        );
+    } else {
+        return response_json!(
+            status: hyper::StatusCode::NOT_FOUND,
+            body: &serde_json::json!({
+                 "status": "error"
+             })
+        );
+    }
+}
+
 pub async fn delete_task(mut req: Request<Body>) -> Result<Response<Body>, anyhow::Error> {
     #[derive(Debug, Serialize, Deserialize)]
     struct RequestBody {

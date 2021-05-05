@@ -9,7 +9,7 @@ mod messages;
 mod utils;
 use handlers::{
     abort_task, create_task, delete_task, exec_task, exec_task_url, get_active_tasks, get_report,
-    get_reports, get_reports_for_task, get_task, get_tasks, update_task,
+    get_reports, get_reports_for_task, get_task, get_tasks, update_task, abort_task_url
 };
 pub use messages::ServerMessage;
 use tracing::info;
@@ -37,6 +37,7 @@ impl Server {
             .post("/execute", exec_task)
             .post("/execute/:id", exec_task_url)
             .post("/abort", abort_task)
+            .post("/abort/:id", abort_task_url)
             .get("/activetasks", get_active_tasks)
             .get("/task/:id/reports", get_reports_for_task)
             .get("/reports", get_reports)
