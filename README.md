@@ -138,6 +138,7 @@ And you'll get your execution report :)
 - [ ] Create examples
 - [ ] Create a landing page
 - [ ] Create a GUI controller
+- [ ] Ability to delay tasks' execution?
 
 
 
