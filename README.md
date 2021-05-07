@@ -36,7 +36,7 @@ StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/).
 
 ### Tutorials
 
-- [Building your own CI](https://stewardx.dev/Tutorials/tutorial-ci)
+- Building your own CI [here](https://stewardx.dev/Tutorials/tutorial-ci) or [here](https://dev.to/gokayokyay/build-your-own-react-ci-in-5-minutes-1aen)
 
 ### Getting Started
 #### Prerequisites
