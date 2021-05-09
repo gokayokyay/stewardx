@@ -133,7 +133,7 @@ And you'll get your execution report :)
 ### Roadmap not in order
 - [ ] Add websocket support
 - [ ] Add one or more task types
-- [ ] Create a CLI app
+- [ ] Create a CLI app - WIP
 - [X] Create a cute logo - 🥳
 - [ ] Create examples
 - [ ] Create a landing page
