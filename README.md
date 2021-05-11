@@ -24,6 +24,7 @@ StewardX is a task scheduler written in pure [Rust](https://www.rust-lang.org/).
 |--------------------------------------------------------------|--------------------------------|
 | [Panel](https://github.com/gokayokyay/stewardx-panel)        | Proof of concept control panel |
 | [Documentation](https://github.com/gokayokyay/stewardx-docs) | Documentation repository       |
+| [CLI](https://github.com/gokayokyay/stewardx-cli)            | StewardX CLI - WIP             |
 
 ### Features
  - It's pure Rust and *lightweight*.
