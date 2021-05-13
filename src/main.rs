@@ -33,6 +33,8 @@ mod tasks;
 mod traits;
 mod types;
 mod config;
+#[cfg(target_os="linux")]
+mod socket;
 #[cfg(feature = "docker")]
 static GLOBAL_DOCKER: Lazy<shiplift::Docker> = Lazy::new(|| shiplift::Docker::default());
 mod server;
@@ -107,6 +109,28 @@ async fn main() {
         server.listen(host, port).await;
     });
 
+    tokio::spawn(async move {
+        if cfg!(unix) {
+            use tokio::signal::unix::*;
+            let mut hup = signal(SignalKind::hangup()).unwrap();
+            let mut int = signal(SignalKind::interrupt()).unwrap();
+            let mut quit = signal(SignalKind::quit()).unwrap();
+            let mut term = signal(SignalKind::terminate()).unwrap();
+
+            tokio::select! {
+                v = hup.recv() => v.unwrap(),
+                v = int.recv() => v.unwrap(),
+                v = quit.recv() => v.unwrap(),
+                v = term.recv() => v.unwrap(),
+            }
+
+            println!("Goodbye!");
+            socket::unix_utils::exit();
+        }
+    });
+    tokio::spawn(async move {
+        socket::SocketManager::listen().await;
+    });
     let _ = tokio::spawn(async {
         let server_receiver = Arc::new(tokio::sync::Mutex::new(sv_rx));
         let (tx, rx) = tokio::sync::mpsc::channel(128);
