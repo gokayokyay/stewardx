@@ -130,6 +130,7 @@ And you'll get your execution report :)
 - [X] Write documentation - [StewardX Docs](https://github.com/gokayokyay/stewardx-docs)
 - [X] Use features to make panel and docker features optional
 - [X] Precompiled binaries (Currently linux only)
+- [ ] Create distributed worker system
 
 ### Roadmap not in order
 - [ ] Add websocket support
