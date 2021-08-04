@@ -55,7 +55,7 @@ cd stewardx
 
 If you don't want to use Docker, then please disable the `docker` feature in Cargo.toml in the root of repository. To disable it, just remove the "docker" item from the `default` key of `[features]`. So it'll look like
 ```toml
-default = ["panel", "cmd"]
+default = ["cmd"]
 ```
 
 You'll need a running Postgres instance. If you got one, you can skip this step. But if you don't, there're some utility scripts in scripts folder located in the root of the repository. For simplicity's sake, let's just use the temporary one, `docker-postgres-temp.sh`.
@@ -128,7 +128,7 @@ And you'll get your execution report :)
 - [X] Cover errors
 - [ ] Test coverage
 - [X] Write documentation - [StewardX Docs](https://github.com/gokayokyay/stewardx-docs)
-- [X] Use features to make panel and docker features optional
+- [X] Use features to make ~~panel and~~ docker feature optional
 - [X] Precompiled binaries (Currently linux only)
 
 ### Roadmap not in order

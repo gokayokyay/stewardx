@@ -15,9 +15,6 @@ pub use messages::ServerMessage;
 use tracing::info;
 use utils as ServerUtils;
 
-mod app_router;
-use app_router::app_router;
-
 use crate::CONFIG;
 
 pub struct Server {
@@ -54,10 +51,6 @@ impl Server {
                 .delete("/tasks", delete_task);
         }
 
-        #[cfg(feature = "panel")]
-        if CONFIG.get_features().get("panel").unwrap().eq(&true) {
-            router = router.scope("/app", app_router());
-        }
         let router = router.build().unwrap();
         let service = RouterService::new(router).unwrap();
         let addr = SocketAddr::from_str(format!("{}:{}", host, port).as_str())

@@ -2,25 +2,21 @@ use std::{collections::HashMap, path::PathBuf, str::FromStr};
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Config {
-    pub index_file_path: String,
     pub logs_folder_path: String,
-    pub panel_feature: bool,
     pub server_crud_feature: bool
 }
 
 impl Default for Config {
     fn default() -> Self {
-        return Self::new("index.html".into(), "logs".into(), true, true)
+        return Self::new("logs".into(), true)
     }
 }
 
 // We want this to be blocking
 impl Config {
-    pub fn new(index_file_path: String, logs_folder_path: String, panel_feature: bool, server_crud_feature: bool) -> Self {
+    pub fn new(logs_folder_path: String, server_crud_feature: bool) -> Self {
         Self {
-            index_file_path,
             logs_folder_path,
-            panel_feature,
             server_crud_feature
         }
     }
@@ -87,16 +83,6 @@ impl Config {
             }
         };
     }
-    pub fn get_index_file_path(&self) -> PathBuf {
-        let index_path_string = &self.index_file_path;
-        if index_path_string.starts_with("/") {
-            return PathBuf::from_str(&index_path_string).unwrap();
-        }
-        let mut config_dir = Self::get_config_dir();
-        config_dir.extend(index_path_string.split("/"));
-        let index_path = config_dir;
-        return index_path;
-    }
     pub fn get_logs_folder_path(&self) -> PathBuf {
         let logs_folder_path = &self.logs_folder_path;
         if logs_folder_path.starts_with("/") {
@@ -109,7 +95,6 @@ impl Config {
     }
     pub fn get_features<'a>(&'a self) -> HashMap<&'a str, bool> {
         let mut features = HashMap::new();
-        features.insert("panel", self.panel_feature);
         features.insert("server_crud", self.server_crud_feature);
         features
     }

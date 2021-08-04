@@ -480,6 +480,7 @@ impl DBManager {
                         );
                         recv_dropped!(resp.send(report), "GetExecutionReport");
                     }
+                    DBMessage::CreatePostHook { task_id, url, resp } => todo!(),
                 };
             });
         }

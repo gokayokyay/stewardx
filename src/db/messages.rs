@@ -1,10 +1,7 @@
 use chrono::NaiveDateTime;
 use uuid::Uuid;
 
-use crate::{
-    models::{ExecutionReport, TaskError, TaskModel},
-    types::OneShotMessageResponse,
-};
+use crate::{models::{ExecutionReport, PostWebhook, TaskError, TaskModel}, types::OneShotMessageResponse};
 // TODO: Remove allow when we need unconstructed variants
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -71,6 +68,11 @@ pub enum DBMessage {
         report_id: Uuid,
         resp: DBMessageResponse<ExecutionReport>,
     },
+    CreatePostHook {
+        task_id: Uuid,
+        url: String,
+        resp: DBMessageResponse<PostWebhook>
+    }
 }
 
 impl DBMessage {
@@ -97,6 +99,7 @@ impl DBMessage {
             DBMessage::DeleteErrorsForTask { .. } => "DeleteErrorsForTask",
             DBMessage::GetExecutionReports { .. } => "GetExecutionReports",
             DBMessage::GetExecutionReport { .. } => "GetExecutionReport",
+            DBMessage::CreatePostHook { .. } => "CreatePostHook",
         }
     }
 }
