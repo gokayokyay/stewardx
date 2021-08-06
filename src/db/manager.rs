@@ -6,7 +6,7 @@ use tokio::sync::mpsc::Receiver;
 use tracing::{info, instrument};
 use uuid::Uuid;
 
-use crate::models::{ExecutionReport, TaskError, TaskModel};
+use crate::models::{ExecutionReport, PostWebhook, TaskError, TaskModel};
 use crate::recv_dropped;
 
 use super::DBMessage;
@@ -369,6 +369,47 @@ impl DBManager {
         .await?;
         Ok(rows)
     }
+    #[instrument(name = "Create post task webhook.", skip(conn))]
+    pub async fn create_post_webhook(
+        conn: &mut Connection,
+        hook: PostWebhook
+    ) -> Result<PostWebhook, sqlx::Error> {
+        let row = sqlx::query_as!(
+            PostWebhook,
+            r#"
+            INSERT INTO steward_task_post_webhooks
+                ( id, task_id, hook_url, created_at, updated_at )
+                VALUES
+                ( $1, $2, $3, $4, $5 )
+                RETURNING *
+            "#,
+            hook.id,
+            hook.task_id,
+            hook.hook_url,
+            hook.created_at,
+            hook.updated_at
+        )
+        .fetch_one(conn)
+        .await?;
+        Ok(row)
+    }
+    #[instrument(name = "Fetch task's webhooks.", skip(conn))]
+    pub async fn get_task_post_webhooks(
+        conn: &mut Connection,
+        task_id: Uuid
+    ) -> Result<Vec<PostWebhook>, sqlx::Error> {
+        let rows = sqlx::query_as!(
+            PostWebhook,
+            r#"
+                SELECT * FROM steward_task_post_webhooks
+                WHERE task_id = $1
+            "#,
+            task_id,
+        )
+        .fetch_all(conn)
+        .await?;
+        Ok(rows)
+    }
 }
 
 macro_rules! sqlx_to_anyhow {
@@ -480,7 +521,18 @@ impl DBManager {
                         );
                         recv_dropped!(resp.send(report), "GetExecutionReport");
                     }
-                    DBMessage::CreatePostHook { task_id, url, resp } => todo!(),
+                    DBMessage::CreatePostHook { hook, resp } => {
+                        let hook = sqlx_to_anyhow!{
+                            Self::create_post_webhook(&mut connection, hook).await
+                        };
+                        recv_dropped!(resp.send(hook), "CreatePostHook");
+                    },
+                    DBMessage::GetTaskPostWebhooks { task_id, resp } => {
+                        let hooks = sqlx_to_anyhow!{
+                            Self::get_task_post_webhooks(&mut connection, task_id).await
+                        };
+                        recv_dropped!(resp.send(hooks), "GetTaskPostWebhooks");
+                    },
                 };
             });
         }

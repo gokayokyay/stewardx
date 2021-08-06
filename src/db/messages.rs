@@ -69,9 +69,12 @@ pub enum DBMessage {
         resp: DBMessageResponse<ExecutionReport>,
     },
     CreatePostHook {
-        task_id: Uuid,
-        url: String,
+        hook: PostWebhook,
         resp: DBMessageResponse<PostWebhook>
+    },
+    GetTaskPostWebhooks {
+        task_id: Uuid,
+        resp: DBMessageResponse<Vec<PostWebhook>>
     }
 }
 
@@ -100,6 +103,7 @@ impl DBMessage {
             DBMessage::GetExecutionReports { .. } => "GetExecutionReports",
             DBMessage::GetExecutionReport { .. } => "GetExecutionReport",
             DBMessage::CreatePostHook { .. } => "CreatePostHook",
+            DBMessage::GetTaskPostWebhooks { .. } => "GetTaskPostWebhooks"
         }
     }
 }
